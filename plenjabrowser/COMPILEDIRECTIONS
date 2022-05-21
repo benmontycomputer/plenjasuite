@@ -1,0 +1,18 @@
+First: comment out the "import" statements that use files in the source directory
+	(ex: "import headerbar", "import settings").
+
+Next: uncomment the line below "# use this for production" so that the files
+	in /usr/lib/python3.xx/site-packages/plenjabrowser are used.
+	An error will be thrown if this is not done.
+
+Next: run "./compile.sh"
+
+Next: copy the compiled browser to the required directory.
+
+Next: copy all the other python files used by the program 
+	into the site-packages/plenjabrowser directory,
+	wherever that is.
+	Ex: /package/source/package/usr/lib/python3.10/site-packages/plenjabrowser/
+
+Finally: copy all files that belong in "/etc/plenja/browser" to where they
+	need to go for the package.
