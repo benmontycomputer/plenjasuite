@@ -51,9 +51,24 @@ static char *filename;
 //static char * rows;
 
 int main(int argc, char **argv) {
-    initscr();
+    //initscr();
     
     if (argc == 2) {
+    	if (strcmp(argv[1], "--help") == 0)
+    	{
+    		printf("Usage:\n");
+    		printf(argv[0]);
+    		printf(" [FILE]\n");
+    		return 0;
+    	}
+    	if (strcmp(argv[1], "--version") == 0)
+    	{
+    		printf("pint v0.0.1-alpha.1\n");
+    		return 0;
+    	}
+    	
+    	initscr();
+    	
         writespecificline(10, "1 argument passed");
         //char filename = malloc(sizeof(argv[1]));
         //strcpy(&argv[1], &filename);
@@ -62,6 +77,8 @@ int main(int argc, char **argv) {
         endwin();
         return returnval;
     }
+    
+    initscr();
     
     writespecificline(0, "Welcome to the Pint text editor.");
     
