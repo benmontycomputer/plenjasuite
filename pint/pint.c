@@ -178,6 +178,29 @@ int edit(char filename1[]) {
     writespecificlinewithcolor(0, topmessage, COLOR_BLACK, COLOR_WHITE);
     free(topmessage);
     
+    char *bottom1 = malloc(sizeX);
+    
+    memcpy(bottom1, "Ctrl+X: Save", 12);
+    /*i = 12;
+    while (i < sizeX)
+    {
+    	strncat(bottom1, " ", 1);
+    	i++;
+    }
+    char *bottom2 = malloc(sizeX);
+    memcpy(bottom2, " ", 2);
+    i = 0;
+    while (i < sizeX)
+    {
+    	strncat(bottom2, " ", 1);
+    	i++;
+    }*/
+    
+    writespecificlinewithcolor(sizeY - 2, bottom1, COLOR_BLACK, COLOR_WHITE);
+    //writespecificlinewithcolor(sizeY - 1, bottom2, COLOR_BLACK, COLOR_WHITE);
+    free(bottom1);
+    //free(bottom2);
+    
     //intrflush(stdscr, false);
     
     keypad(stdscr, true);
@@ -199,7 +222,12 @@ int edit(char filename1[]) {
 			//printf("%d", charin);
 		}
 		
-    	processchar(sizeY, sizeX, charin);
+    	int result = processchar(sizeY, sizeX, charin);
+    	if (result == 1)
+    	{
+    		save();
+    		return;
+    	}
     	//printf("%d ", ch);
     	//getch();
     }
@@ -211,7 +239,7 @@ int edit(char filename1[]) {
     //free(rows);
 }
 
-int saveandclose()
+int save()
 {
 	char filename1[strlen(filename)];
 	strcpy(filename1, filename);
@@ -227,13 +255,15 @@ int saveandclose()
 			fputs(rows[i].chars, file);
 			fputs("\n", file);
 			
-			printf("adding line");
+			//printf("adding line");
 			
 			i++;
 		}
 		
 		//file.close();
 		fclose(file);
+		
+		//endwin();
 	}
 	else
 	{
@@ -269,7 +299,7 @@ int processchar(int sizeY, int sizeX, int charin)
 			}
 			else
 			{
-				int lentmp = strlen(rows[y - 2].chars);
+				int lentmp = rows[y - 2].length;//strlen(rows[y - 2].chars);
 				if (lentmp >= sizeX)
 				{
 					move(y - 1, sizeX - 1);
@@ -285,10 +315,24 @@ int processchar(int sizeY, int sizeX, int charin)
 		}
 		else
 		{
-			move(y, x - 1);
+			//move(y, x - 1);
 			actualX--;
+			drawlinenocopy(y - 1);
+			move(y, x - 1);
 		}
 		drawlinenocopy(y - 1); //update the row
+		
+		if (y < numberOfRows)
+		{
+			int actualXCache = actualX;
+			actualX = 0;
+			int xCache, yCache;
+			getyx(stdscr, yCache, xCache);
+			move(y, 0);
+			drawlinenocopy(y);
+			move(yCache, xCache);
+			actualX = actualXCache;
+		}
 		refresh();
 	}
 	else if (charin == 277967) // right arrow
@@ -297,7 +341,7 @@ int processchar(int sizeY, int sizeX, int charin)
 		int y,x;
 		getyx(stdscr, y, x);
 		
-		if (actualX == strlen(rows[y - 1].chars))
+		if (actualX == rows[y - 1].length)//strlen(rows[y - 1].chars))
 		{
 			if (y == numberOfRows)
 			{
@@ -323,13 +367,42 @@ int processchar(int sizeY, int sizeX, int charin)
 		}
 		
 		drawlinenocopy(y - 1);
+		if (y < numberOfRows)
+		{
+			int actualXCache = actualX;
+			actualX = 0;
+			int xCache, yCache;
+			getyx(stdscr, yCache, xCache);
+			move(y, 0);
+			drawlinenocopy(y);
+			move(yCache, xCache);
+			actualX = actualXCache;
+		}
 		refresh();
 		// update the row for scrolling
 	}
-	else if (charin == 277966)
-	{}
-	else if (charin == 277965)
-	{}
+	else if (charin == 277966) // down arrow
+	{
+		int y,x;
+		getyx(stdscr, y, x);
+		int tmpint = rows[y - 1].length - actualX + 1;
+		while (tmpint > 0)
+		{
+			processchar(sizeY, sizeX, 277967);
+			tmpint--;
+		}
+	}
+	else if (charin == 277965) // up arrow
+	{
+		int y,x;
+		getyx(stdscr, y, x);
+		int tmpint = actualX + 2;
+		while (tmpint > 0)
+		{
+			processchar(sizeY, sizeX, 277968);
+			tmpint--;
+		}
+	}
 	else if (charin == 13) // enter
 	{
 		//fprintf(stderr, "enter");
@@ -338,6 +411,12 @@ int processchar(int sizeY, int sizeX, int charin)
 		
 		insertrow(y, "");
 		int i = y - 1;
+		int actualXCache = actualX;
+		actualX = 0;
+		int xCache, yCache;
+		getyx(stdscr, yCache, xCache);
+		move(y, 0);
+		
 		while (i < numberOfRows && i + 2 < sizeY)
 		{
 			drawlinenocopy(i);
@@ -345,12 +424,16 @@ int processchar(int sizeY, int sizeX, int charin)
 			i++;
 		}
 		
+		move(yCache, xCache);
+		actualX = actualXCache;
+		
 		refresh();
 	}
 	else if (charin == 24) // ctrl+x?
 	{
 		//fprintf(stderr, "ctrl+x");
-		saveandclose();
+		//saveandclose();
+		return 1;
 	}
 	else if (isalnum(charin) || charin == ' ' || charin == '!' || charin == '@' || charin == '#' || charin == '$' || charin == '%' || charin == '^' || charin == '&' || charin == '*' || charin == '(' || charin == ')' || charin == '-' || charin == '_' || charin == '=' || charin == '+' || charin == '`' || charin == '~' || charin == '[' || charin == ']' || charin == '{' || charin == '}' || charin == '\\' || charin == '|' || charin == '\'' || charin == '"' || charin == ';' || charin == ':' || charin == ',' || charin == '.' || charin == '<' || charin == '>' || charin == '/' || charin == '?')
 	{
@@ -367,7 +450,17 @@ int processchar(int sizeY, int sizeX, int charin)
 		//actualX++;
 		
 		drawlinenocopy(y - 1);
-		drawlinenocopy(y);
+		if (y < numberOfRows)
+		{
+			int actualXCache = actualX;
+			actualX = 0;
+			int xCache, yCache;
+			getyx(stdscr, yCache, xCache);
+			move(y, 0);
+			drawlinenocopy(y);
+			move(yCache, xCache);
+			actualX = actualXCache;
+		}
 		//fprintf(stderr, "%s \n", rows[y - 1].chars);
 		
 		refresh();
@@ -387,11 +480,11 @@ int processchar(int sizeY, int sizeX, int charin)
 				insertrow(y, "");
 			}
 			
-			int nextActualX = strlen(rows[y - 1].chars);
+			int nextActualX = rows[y - 1].length; //strlen(rows[y - 1].chars);
 			
 			char *tmp;
 			
-			tmp = malloc(strlen(rows[y - 2].chars) + strlen(rows[y - 1].chars) + 1);
+			tmp = malloc(rows[y - 2].length + rows[y - 1].length + 1); //malloc(strlen(rows[y - 2].chars) + strlen(rows[y - 1].chars) + 1);
 			
 			strcpy(tmp, rows[y - 2].chars);
 			strcat(tmp, rows[y - 1].chars);
@@ -448,9 +541,14 @@ int processchar(int sizeY, int sizeX, int charin)
 		}
 		// move cursor
 		//processchar(sizeY, sizeX, 277968);
-		drawlinenocopy(y);
+		if (y < numberOfRows)
+		{
+			drawlinenocopy(y);
+		}
 		refresh();
 	}
+	
+	return 0;
 }
 
 int drawlinenocopy(int row)
@@ -467,6 +565,7 @@ int drawline(int row, char *line, int offset)
 {
 	rows[row].chars = malloc(strlen(line));
 	strcpy(rows[row].chars, line);
+	rows[row].length = strlen(line);
 	
 	int sizeY, sizeX;
 	getsize(&sizeX, &sizeY);
