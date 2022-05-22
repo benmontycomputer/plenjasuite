@@ -3,6 +3,8 @@
 #include<stdio.h>
 #include<ncurses.h>
 #include<ctype.h>
+#include<signal.h>
+#include<errno.h>
 
 #define TMPREFIX " Pint Editor - "
 
@@ -28,12 +30,23 @@ typedef struct editorRow
 {
     //char *chars;
     char *chars;
+    int length;
 } editorRow;
 
 static struct editorRow *rows;
 static int numberOfRows = 0;
 static int actualX = 0;
 static int rowOffset = 0;
+
+//https://stackoverflow.com/questions/7978315/ctrl-c-eaten-by-getchar
+static char done = 0;
+static void sigHandler(int signum)
+{
+    done = 1;
+}
+
+static char *filename;
+
 //static char rows[4][128];
 //static char * rows;
 
@@ -79,12 +92,24 @@ int edit(char filename1[]) {
 		return 2;
 	}
 	
+	filename = malloc(strlen(filename1));
+	strcpy(filename, filename1);
+	
 	clear();
 	noecho();
 	cbreak();
 	
     int sizeX = 0;
     int sizeY = 0;
+    
+    //https://stackoverflow.com/questions/7978315/ctrl-c-eaten-by-getchar
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = sigHandler;
+    sa.sa_flags = 0;// not SA_RESTART!;
+
+    //sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
     
     getsize(&sizeX, &sizeY);
     
@@ -108,7 +133,7 @@ int edit(char filename1[]) {
     
     while ((currentread = getline(&currentline, &len, file)) != -1)
     {
-        rows[linenumber].chars = malloc(strlen(currentline));
+        //rows[linenumber].chars = malloc(strlen(currentline));
         //currentline = realloc(currentline, strlen(currentline) + 1);
         //strncat(currentline, '\0', 1);
         //char * currentline2 = malloc(strlen(currentline) + 1);
@@ -116,6 +141,7 @@ int edit(char filename1[]) {
         //currentline2[strlen(currentline2) - 1] = '\0';
         //currentline[strlen(currentline) - 1] = '\0';
         //strcpy(rows[linenumber].chars, currentline);
+        currentline[strlen(currentline) - 1] = '\0';
         insertrow(linenumber, currentline);
         //free(currentline2);
         linenumber = linenumber + 1;
@@ -177,8 +203,44 @@ int edit(char filename1[]) {
     	//printf("%d ", ch);
     	//getch();
     }
+    /*while (true)
+    {
+    	printf("%d ", getchar());
+    }*/
     
-    free(rows);
+    //free(rows);
+}
+
+int saveandclose()
+{
+	char filename1[strlen(filename)];
+	strcpy(filename1, filename);
+	
+	FILE *file = fopen(filename1, "w");
+	if (file)
+	{
+		int i = 0;
+		while (i < numberOfRows)
+		{
+			char tmp[rows[i].length];
+			strcpy(tmp, rows[i].chars);
+			fputs(rows[i].chars, file);
+			fputs("\n", file);
+			
+			printf("adding line");
+			
+			i++;
+		}
+		
+		//file.close();
+		fclose(file);
+	}
+	else
+	{
+		fprintf(stderr, "%s %s", "failed to save: ", filename1);
+	}
+	
+	//free(file);
 }
 
 int processchar(int sizeY, int sizeX, int charin)
@@ -268,7 +330,29 @@ int processchar(int sizeY, int sizeX, int charin)
 	{}
 	else if (charin == 277965)
 	{}
-	else if (isalnum(charin) || charin == ' ')
+	else if (charin == 13) // enter
+	{
+		//fprintf(stderr, "enter");
+		int y,x;
+		getyx(stdscr, y, x);
+		
+		insertrow(y, "");
+		int i = y - 1;
+		while (i < numberOfRows && i + 2 < sizeY)
+		{
+			drawlinenocopy(i);
+			
+			i++;
+		}
+		
+		refresh();
+	}
+	else if (charin == 24) // ctrl+x?
+	{
+		//fprintf(stderr, "ctrl+x");
+		saveandclose();
+	}
+	else if (isalnum(charin) || charin == ' ' || charin == '!' || charin == '@' || charin == '#' || charin == '$' || charin == '%' || charin == '^' || charin == '&' || charin == '*' || charin == '(' || charin == ')' || charin == '-' || charin == '_' || charin == '=' || charin == '+' || charin == '`' || charin == '~' || charin == '[' || charin == ']' || charin == '{' || charin == '}' || charin == '\\' || charin == '|' || charin == '\'' || charin == '"' || charin == ';' || charin == ':' || charin == ',' || charin == '.' || charin == '<' || charin == '>' || charin == '/' || charin == '?')
 	{
 		//printf("%d", charin);
 		//printf("isalnum");
@@ -277,10 +361,13 @@ int processchar(int sizeY, int sizeX, int charin)
 		char *newchar = malloc(1);
 		newchar = charin;
 		insertchar(y - 1, x, newchar);
-		move(y, x + 1);
-		actualX++;
+		//free(newchar);
+		processchar(sizeY, sizeX, 277967);
+		//move(y, x + 1);
+		//actualX++;
 		
 		drawlinenocopy(y - 1);
+		drawlinenocopy(y);
 		//fprintf(stderr, "%s \n", rows[y - 1].chars);
 		
 		refresh();
@@ -291,6 +378,10 @@ int processchar(int sizeY, int sizeX, int charin)
 		getyx(stdscr, y, x);
 		if (actualX == 0 && x == 0)
 		{
+			if (y == 1)
+			{
+				return;
+			}
 			if (y == numberOfRows)
 			{
 				insertrow(y, "");
@@ -357,6 +448,7 @@ int processchar(int sizeY, int sizeX, int charin)
 		}
 		// move cursor
 		//processchar(sizeY, sizeX, 277968);
+		drawlinenocopy(y);
 		refresh();
 	}
 }
@@ -365,7 +457,7 @@ int drawlinenocopy(int row)
 {
 	int y,x;
 	getyx(stdscr, y, x);
-	char *text = malloc(strlen(rows[row].chars));
+	char *text = malloc(rows[row].length);//malloc(strlen(rows[row].chars));
     strcpy(text, rows[row].chars);
     drawline(row, text, actualX - x);
     free(text);
@@ -444,13 +536,15 @@ int insertrow(int insertbeforeindex, char row[])//, char * rows2)
 	while (i >= insertbeforeindex + 1)
 	{
 		//printf("%s %d", "i=", i);
-		rows[i].chars = malloc(strlen(rows[i - 1].chars));
-		memcpy(rows[i].chars, rows[i - 1].chars, strlen(rows[i - 1].chars));
+		rows[i].chars = malloc(rows[i - 1].length);//malloc(strlen(rows[i - 1].chars));
+		rows[i].length = rows[i - 1].length;
+		memcpy(rows[i].chars, rows[i - 1].chars, rows[i - 1].length);//strlen(rows[i - 1].chars));
 		
 		i--;
 	}
 	
 	rows[insertbeforeindex].chars = malloc(strlen(row));
+	rows[insertbeforeindex].length = strlen(row);
 	memcpy(rows[insertbeforeindex].chars, row, strlen(row));
 }
 int expandrows()
@@ -467,9 +561,10 @@ int expandrows()
 	while (i < numberOfRows)
 	{
 		//printf("%s", rows[i].chars);
-		tmp[i].chars = malloc(sizeof(editorRow));
-		tmp[i].chars = malloc(strlen(rows[i].chars));
-		strncpy(tmp[i].chars, rows[i].chars, strlen(rows[i].chars));
+		//tmp[i].chars = malloc(sizeof(editorRow));
+		tmp[i].chars = malloc(rows[i].length);//malloc(strlen(rows[i].chars));
+		tmp[i].length = rows[i].length;
+		strncpy(tmp[i].chars, rows[i].chars, rows[i].length);//strlen(rows[i].chars));
 		//printf("%s", tmp[i].chars);
 		i++;
 	}
@@ -482,8 +577,9 @@ int expandrows()
 	while (i < numberOfRows)
 	{
 		//printf("%s", tmp[i].chars);
-		rows[i].chars = malloc(strlen(tmp[i].chars));
-		strncpy(rows[i].chars, tmp[i].chars, strlen(tmp[i].chars));
+		rows[i].chars = malloc(tmp[i].length);//malloc(strlen(tmp[i].chars));
+		rows[i].length = tmp[i].length;
+		strncpy(rows[i].chars, tmp[i].chars, tmp[i].length);//strlen(tmp[i].chars));
 		//printf("%s", rows[i].chars);
 		i++;
 	}
@@ -505,8 +601,9 @@ int removerow(int index)
 	while (i < index)
 	{
 		//printf("%s", rows[i].chars);
-		tmp[i].chars = malloc(strlen(rows[i].chars));
-		strncpy(tmp[i].chars, rows[i].chars, strlen(rows[i].chars));
+		tmp[i].chars = malloc(rows[i].length);//malloc(strlen(rows[i].chars));
+		tmp[i].length = rows[i].length;
+		strncpy(tmp[i].chars, rows[i].chars, rows[i].length);//strlen(rows[i].chars));
 		//printf("%s", tmp[i].chars);
 		i++;
 	}
@@ -514,8 +611,9 @@ int removerow(int index)
 	while (i < numberOfRows)
 	{
 		//printf("%s", rows[i].chars);
-		tmp[i - 1].chars = malloc(strlen(rows[i].chars));
-		strncpy(tmp[i - 1].chars, rows[i].chars, strlen(rows[i].chars));
+		tmp[i - 1].chars = malloc(rows[i].length);//malloc(strlen(rows[i].chars));
+		tmp[i - 1].length = rows[i].length;
+		strncpy(tmp[i - 1].chars, rows[i].chars, rows[i].length);//strlen(rows[i].chars));
 		//printf("%s", tmp[i].chars);
 		i++;
 	}
@@ -527,8 +625,9 @@ int removerow(int index)
 	while (i < numberOfRows - 1)
 	{
 		//printf("%s", tmp[i].chars);
-		rows[i].chars = malloc(strlen(tmp[i].chars));
-		strncpy(rows[i].chars, tmp[i].chars, strlen(tmp[i].chars));
+		rows[i].chars = malloc(tmp[i].length);//malloc(strlen(tmp[i].chars));
+		rows[i].length = tmp[i].length;
+		strncpy(rows[i].chars, tmp[i].chars, tmp[i].length);//strlen(tmp[i].chars));
 		//printf("%s", rows[i].chars);
 		i++;
 	}
@@ -542,7 +641,7 @@ int removerow(int index)
 
 int insertchar(int row, int insertbeforeindex, char insertchar[])//, char * rows2)
 {
-	//expandrow(row);
+	expandrow(row);
     
     /*//https://stackoverflow.com/questions/4761764/how-to-remove-first-three-characters-from-string-with-c
     
@@ -611,9 +710,11 @@ int insertchar(int row, int insertbeforeindex, char insertchar[])//, char * rows
 	//rows[row].chars = malloc(strlen(tmp));
 	//strcpy(rows[row].chars, tmp);
 	//free(tmp);
-	char *tmp = insert_char_malloc(rows[row].chars, strlen(rows[row].chars), 'd', insertbeforeindex);
+	char *tmp = insert_char_malloc(rows[row].chars, rows[row].length/*strlen(rows[row].chars)*/, insertchar, insertbeforeindex);
 	rows[row].chars = malloc(strlen(tmp));
-	memmove(rows[row].chars, tmp, strlen(tmp));
+	rows[row].length = strlen(tmp);
+	memcpy(rows[row].chars, tmp, strlen(tmp));
+	free(tmp);
 }
 
 char* insert_char_malloc (char *str, int len, char c, int pos)
@@ -647,14 +748,16 @@ int deletechar(int row, int deleteindex)
 	deleteindex--;
 	memmove(&rows[row].chars[deleteindex], &rows[row].chars[deleteindex + 1], strlen(rows[row].chars) - deleteindex);
 	//rows[row].chars = realloc(rows[row].chars, strlen(rows[row].chars) - 1);
-	char *tmp = malloc(strlen(rows[row].chars) - 1);
-	memcpy(tmp, rows[row].chars, strlen(rows[row].chars) - 1);
+	int newlen = rows[row].length - 1;
+	char *tmp = malloc(newlen);//malloc(strlen(rows[row].chars) - 1);
+	memcpy(tmp, rows[row].chars, newlen);//strlen(rows[row].chars) - 1);
 	//rows[row].chars = malloc(strlen(tmp));
 	//memcpy(rows[row].chars, tmp, strlen(tmp));
 	free(rows[row].chars);
-	rows[row].chars = malloc(strlen(tmp));
+	rows[row].chars = malloc(newlen);
 	//rows[row].chars = tmp;
-	memcpy(rows[row].chars, tmp, strlen(tmp));
+	memcpy(rows[row].chars, tmp, newlen);
+	rows[row].length = newlen;
 	free(tmp);
 	//free(tmp);
 	/*char *tmp = malloc(strlen(rows[row].chars));
@@ -673,15 +776,17 @@ int expandrow(int row)
 	char *newrow;
 	//newrow = malloc(strlen(rows[row].chars) + 1);
 	
-	fprintf(stderr, "Row before expansion: %s\n", rows[row].chars);
+	//fprintf(stderr, "Row before expansion: %s\n", rows[row].chars);
 	
-	newrow = malloc((strlen(rows[row].chars)) + 1);
+	int newlen = rows[row].length + 1;
+	newrow = malloc(newlen);//malloc((strlen(rows[row].chars)) + 1);
 	
-	strncpy(newrow, rows[row].chars, strlen(rows[row].chars));
+	strncpy(newrow, rows[row].chars, newlen - 1);//strlen(rows[row].chars));
 	
 	free(rows[row].chars);
 	//rows[row].chars = realloc(rows[row].chars, strlen(newrow));
 	rows[row].chars = newrow;
+	rows[row].length = newlen;
 	//rows[row].chars = malloc(strlen(newrow) + 1);
 	//rows[row] = newrow;
 	//newrow[strlen(newrow) - 1] = '\0';
@@ -697,6 +802,8 @@ int getsize(int *x, int *y) {
 }
 
 void writespecificline(int line, char *chars[]) {
+	//char *tmp = malloc(strlen(chars) + 1);
+	//tmp[strlen(chars)] = '\0';
 	int y,x;
 	getyx(stdscr, y, x);
     move(line, 0);
