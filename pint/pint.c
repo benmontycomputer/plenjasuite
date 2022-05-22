@@ -746,7 +746,7 @@ return str;
 int deletechar(int row, int deleteindex)
 {
 	deleteindex--;
-	memmove(&rows[row].chars[deleteindex], &rows[row].chars[deleteindex + 1], strlen(rows[row].chars) - deleteindex);
+	memmove(&rows[row].chars[deleteindex], &rows[row].chars[deleteindex + 1], rows[row].length - deleteindex);
 	//rows[row].chars = realloc(rows[row].chars, strlen(rows[row].chars) - 1);
 	int newlen = rows[row].length - 1;
 	char *tmp = malloc(newlen);//malloc(strlen(rows[row].chars) - 1);
