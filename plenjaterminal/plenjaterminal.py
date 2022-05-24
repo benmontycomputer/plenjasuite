@@ -151,19 +151,31 @@ class MainWindow(Gtk.Window):
             #make widget popup
             widget.popup(None, None, None, event.button, event.time, event.time)
             pass
-    def new_terminal(self, widget):
+    def new_terminal(self, widget, oldtermpid = None):
         #self.terminal.append(Vte.Terminal())
         #self.terminal[self.terminalnumber] = Vte.Terminal()
-        newterm = Vte.Terminal()
-        newterm.spawn_sync(
-            Vte.PtyFlags.DEFAULT,
-            os.environ['HOME'],
-            ["/bin/bash", "--login"],
-            [],
-            GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-            None,
-            None,
-            )
+        if (oldtermpid != None):
+            newterm = Vte.Terminal()
+            newpid = newterm.spawn_sync(
+                Vte.PtyFlags.DEFAULT,
+                os.readlink('/proc/{0}/cwd'.format(oldtermpid[1])),
+                ["/bin/bash", "--login"],
+                [],
+                GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                None,
+                None,
+                )
+        else:
+            newterm = Vte.Terminal()
+            newpid = newterm.spawn_sync(
+                Vte.PtyFlags.DEFAULT,
+                os.environ['HOME'],
+                ["/bin/bash", "--login"],
+                [],
+                GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                None,
+                None,
+                )
         newterm.is_focus = 1
         newtermwrap = TerminalWrapper()
         newtermwrap.terminal1 = newterm
@@ -186,7 +198,7 @@ class MainWindow(Gtk.Window):
         menu_item = Gtk.MenuItem("New Tab")
         rcmenu.append(menu_item)
         menu_item.show()
-        menu_item.connect("activate", self.new_terminal)
+        menu_item.connect("activate", self.new_terminal, newpid)
 
         menu_item = Gtk.MenuItem("Close Tab")
         rcmenu.append(menu_item)
@@ -194,24 +206,41 @@ class MainWindow(Gtk.Window):
         menu_item.connect("activate", newtermwrap.closetab)
 
         #newterm.connect_object("button-press-event", self.button_press, self.rcmenu)
+        newtermwrap.labelbox = Gtk.HBox();
+        newtermwrap.labelbox.add(Gtk.Label(label="Terminal " + str(self.notebook1.get_n_pages() + 1)))
+        
+        close_icon = Gtk.Image.new_from_icon_name("window-close-symbolic", Gtk.IconSize.SMALL_TOOLBAR)
+        
+        closebutton = Gtk.Button()
+        closebutton.set_relief(Gtk.ReliefStyle.NONE)
+        closebutton.add(close_icon)
+
+        closebutton.connect("clicked", newtermwrap.closetab)
+
+        newtermwrap.labelbox.add(closebutton)
+
+        newtermwrap.labelbox.show_all()
+        
         newterm.connect_object("button-press-event", self.button_press, rcmenu)
         #self.terminal.append(newterm)
         #self.remove(self.notebook1)
         #termlabel = Gtk.Label(label="Terminal")
         #termlabel.
-        self.notebook1.append_page(newterm, Gtk.Label(label="Terminal " + str(self.notebook1.get_n_pages() + 1)))
+        pagenum = self.notebook1.append_page(newterm, newtermwrap.labelbox);#Gtk.Label(label="Terminal " + str(self.notebook1.get_n_pages() + 1)))
 
         if self.notebook1.get_nth_page(1) == None:
             self.notebook1.set_show_tabs(False)
         else:
             self.notebook1.set_show_tabs(True)
         
-        self.notebook1.set_tab_detachable(newterm, True)
+        #self.notebook1.set_tab_detachable(newterm, True)
+        self.notebook1.set_tab_reorderable(newterm, True)
         
         #newterm.show_all()
         #newterm.do_child_exited = print()
         newterm.connect("child-exited", newtermwrap.closetab)
         self.notebook1.show_all()
+        self.notebook1.set_current_page(pagenum)
         #self.notebook1 = Gtk.Notebook()
         #for item in self.terminal:
         #    self.notebook1.append_page(item)

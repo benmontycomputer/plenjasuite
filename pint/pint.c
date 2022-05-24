@@ -18,13 +18,15 @@ int insertrow(int insertbeforeindex, char row[]);
 int insertchar(int row, int insertbeforeindex, char insertchar[]);
 int expandrow(int row);
 int expandrows();
-int drawlinenocopy(int row);
+int drawlinenocopy(int row, int offset);
 int drawline(int row, char *line, int offset);
 void writespecificcharswithcolor(int line, int charindex, char *chars[], int textcolor, int backgroundcolor);
 int removerow(int index);
 int deletechar(int row, int deleteindex);
 char* insert_char_realloc (char *str, int len, char c, int pos);
 char* insert_char_malloc (char *str, int len, char c, int pos);
+
+int calculateoffset(int row, bool movingright);
 
 typedef struct editorRow
 {
@@ -36,7 +38,9 @@ typedef struct editorRow
 static struct editorRow *rows;
 static int numberOfRows = 0;
 static int actualX = 0;
+static int xRequest = 0;
 static int rowOffset = 0;
+static int verticalOffset = 0;
 
 //https://stackoverflow.com/questions/7978315/ctrl-c-eaten-by-getchar
 static char done = 0;
@@ -140,7 +144,7 @@ int edit(char filename1[]) {
     }
     
     char* currentline;
-    ssize_t currentread;
+    size_t currentread;
     size_t len = 0;
     
     int linenumber = 0;
@@ -166,6 +170,7 @@ int edit(char filename1[]) {
     }
     fclose(file);
     free(currentline);
+    //return;
     
     //insertrow(linenumber, "");
     
@@ -181,13 +186,11 @@ int edit(char filename1[]) {
     {
         //writespecificline(i + 1, rows[i].chars);
         //insertrow(i, rows[i].chars);
-        drawlinenocopy(i);
+        drawlinenocopy(i, 0);
         i = i + 1;
     }
     
-    char *topmessage;
-    
-    topmessage = malloc(strlen(TMPREFIX) + strlen(filename1));
+    char *topmessage = malloc(strlen(TMPREFIX) + strlen(filename1));
     
     strcpy(topmessage, TMPREFIX);
     strcat(topmessage, filename1);
@@ -198,13 +201,14 @@ int edit(char filename1[]) {
     char *bottom1 = malloc(sizeX);
     
     memcpy(bottom1, "Ctrl+X: Save", 12);
-    /*i = 12;
+    i = 12;
     while (i < sizeX)
     {
-    	strncat(bottom1, " ", 1);
+    	//strncat(bottom1, , 1);
+    	bottom1[i] = ' ';
     	i++;
     }
-    char *bottom2 = malloc(sizeX);
+    /*char *bottom2 = malloc(sizeX);
     memcpy(bottom2, " ", 2);
     i = 0;
     while (i < sizeX)
@@ -312,41 +316,65 @@ int processchar(int sizeY, int sizeX, int charin)
 		{
 			if (y == 1)
 			{
-				// can't move
+				if (verticalOffset == 0)
+				{
+					// can't move
+				}
+				else
+				{
+					verticalOffset--;
+					drawrows();
+				}
 			}
 			else
 			{
-				int lentmp = rows[y - 2].length;//strlen(rows[y - 2].chars);
-				if (lentmp >= sizeX)
+				int lentmp = rows[y + verticalOffset - 2].length;//strlen(rows[y - 2].chars);
+				/*if (lentmp >= sizeX)
 				{
 					move(y - 1, sizeX - 1);
 				}
 				else
 				{
-					move(y - 1, strlen(rows[y - 2].chars));
-				}
+					move(y - 1, lentmp);//strlen(rows[y - 2].chars));
+				}*/
 				actualX = lentmp;
-				drawlinenocopy(y - 2); //update row
+				xRequest = actualX;
+				rowOffset = lentmp - sizeX + 8;
+				rowOffset = calculateoffset(y + verticalOffset - 2, false);
+				if (lentmp >= sizeX)
+				{
+					move(y - 1, actualX - rowOffset);
+				}
+				else
+				{
+					move(y - 1, lentmp);//strlen(rows[y - 2].chars));
+				}
+				drawlinenocopy(y + verticalOffset - 2, rowOffset); //update row
 				// later, make it so scrolling happens here if needed
+				drawlinenocopy(y + verticalOffset - 1, 0);
 			}
 		}
 		else
 		{
 			//move(y, x - 1);
 			actualX--;
-			drawlinenocopy(y - 1);
-			move(y, x - 1);
+			xRequest = actualX;
+			//fprintf(stderr, "%d ", rowOffset);
+			rowOffset = calculateoffset(y - 1 + verticalOffset, false);
+			//fprintf(stderr, "%d \n", rowOffset);
+			drawlinenocopy(y - 1 + verticalOffset, rowOffset);
+			move(y, actualX - rowOffset);
 		}
-		drawlinenocopy(y - 1); //update the row
+		//drawlinenocopy(y - 1, calculateoffset(y - 1, false)); //update the row
 		
-		if (y < numberOfRows)
+		if (y + verticalOffset < numberOfRows)
 		{
 			int actualXCache = actualX;
 			actualX = 0;
 			int xCache, yCache;
 			getyx(stdscr, yCache, xCache);
 			move(y, 0);
-			drawlinenocopy(y);
+			drawlinenocopy(y + verticalOffset, 0);
 			move(yCache, xCache);
 			actualX = actualXCache;
 		}
@@ -358,40 +386,59 @@ int processchar(int sizeY, int sizeX, int charin)
 		int y,x;
 		getyx(stdscr, y, x);
 		
-		if (actualX == rows[y - 1].length)//strlen(rows[y - 1].chars))
+		if (actualX == rows[y - 1 + verticalOffset].length)//strlen(rows[y - 1].chars))
 		{
-			if (y == numberOfRows)
+			if (y + verticalOffset >= numberOfRows || y > sizeY - 2)
 			{
-				// can't move
+				if (y + verticalOffset >= numberOfRows)
+				{
+					// cant move
+				}
+				else
+				{
+					verticalOffset++;
+					drawrows();
+					move(y, 0);
+					actualX = 0;
+					xRequest = actualX;
+					rowOffset = 0;
+					drawlinenocopy(y - 1 + verticalOffset, 0);
+				}
 			}
 			else
 			{
 				move(y + 1, 0);
 				actualX = 0;
-				drawlinenocopy(y - 1); //update the row being left
+				xRequest = actualX;
+				rowOffset = 0;
+				drawlinenocopy(y - 1 + verticalOffset, 0); //update the row being left
 				// later, make it so scrolling happens here if needed
 			}
 		}
 		else
 		{
-			if (x + 1 < sizeX)
-			{
-				move(y, x + 1);
-			}
+			//if (x + 1 < sizeX)
+			//{
+			//	move(y, x + 1);
+			//}
 			//else
+			//move(y, calculateoffset(y - 1));
 			actualX++;
-			drawlinenocopy(y - 1);
+			rowOffset = calculateoffset(y - 1 + verticalOffset, true);
+			move(y, actualX - rowOffset);
+			xRequest = actualX;
+			drawlinenocopy(y - 1 + verticalOffset, rowOffset);
 		}
 		
-		drawlinenocopy(y - 1);
-		if (y < numberOfRows)
+		//drawlinenocopy(y - 1, calculateoffset(y - 1, true));
+		if (y + verticalOffset < numberOfRows)
 		{
 			int actualXCache = actualX;
 			actualX = 0;
 			int xCache, yCache;
 			getyx(stdscr, yCache, xCache);
 			move(y, 0);
-			drawlinenocopy(y);
+			drawlinenocopy(y + verticalOffset, 0);
 			move(yCache, xCache);
 			actualX = actualXCache;
 		}
@@ -402,25 +449,87 @@ int processchar(int sizeY, int sizeX, int charin)
 	{
 		int y,x;
 		getyx(stdscr, y, x);
-		int tmpint = rows[y - 1].length - actualX + 1;
+		int tmpint = rows[y - 1 + verticalOffset].length - actualX + 1;
+		
+		//if (y + verticalOffset >= numberOfRows)
+		//{
+		//	return 0;
+		//}
+		
+		int xRequestCache = xRequest;
+		if (xRequest > rows[y + verticalOffset].length)
+		{
+			tmpint += rows[y + verticalOffset].length;
+		}
+		else
+		{
+			tmpint += xRequest;
+		}
+		
 		while (tmpint > 0)
 		{
 			processchar(sizeY, sizeX, 277967);
 			tmpint--;
 		}
+		xRequest = xRequestCache;
 	}
 	else if (charin == 277965) // up arrow
 	{
-		int y,x;
+		/*int y,x;
 		getyx(stdscr, y, x);
 		int tmpint = actualX + 2;
 		while (tmpint > 0)
 		{
 			processchar(sizeY, sizeX, 277968);
 			tmpint--;
+		}*/
+		
+		int y,x;
+		getyx(stdscr, y, x);
+		int tmpint = actualX + 1; // -1?
+		
+		int xRequestCache = xRequest;
+		
+		if (y - 2 + verticalOffset < 0)
+		{
+			return;
+		}
+		
+		if (xRequest < rows[y - 2 + verticalOffset].length)
+		{
+			//tmpint += rows[y - 2].length;
+			tmpint += rows[y - 2 + verticalOffset].length - xRequest;
+		}
+		else
+		{
+			//tmpint += rows[y - 2].length - xRequest;
+		}
+		
+		while (tmpint > 0)
+		{
+			processchar(sizeY, sizeX, 277968);
+			tmpint--;
+		}
+		
+		if (rowOffset < sizeX)
+		{
+			rowOffset = 0;
+			//rowOffset = calculateoffset(y, true);
+			drawlinenocopy(y - 2 + verticalOffset, 0);//actualX - rowOffset);
+		}
+		
+		xRequest = xRequestCache;
+	}
+	else if (charin == 9)
+	{
+		int i = 4;
+		while(i > 0)
+		{
+			processchar(sizeY, sizeX, ' ');
+			i--;
 		}
 	}
-	else if (charin == 13) // enter
+	else if (charin == 13) // enter (carriage return)
 	{
 		//fprintf(stderr, "enter");
 		int y,x;
@@ -436,7 +545,7 @@ int processchar(int sizeY, int sizeX, int charin)
 		
 		while (i < numberOfRows && i + 2 < sizeY)
 		{
-			drawlinenocopy(i);
+			drawlinenocopy(i + verticalOffset, 0);
 			
 			i++;
 		}
@@ -458,23 +567,24 @@ int processchar(int sizeY, int sizeX, int charin)
 		//printf("isalnum");
 		int y,x;
 		getyx(stdscr, y, x);
-		char *newchar = malloc(1);
-		newchar = charin;
-		insertchar(y - 1, x, newchar);
+		char *newchar = charin;//malloc(1);
+		//newchar = charin;
+		insertchar(y - 1 + verticalOffset, x, newchar);
 		//free(newchar);
 		processchar(sizeY, sizeX, 277967);
 		//move(y, x + 1);
 		//actualX++;
+		//xRequest = actualX;
 		
-		drawlinenocopy(y - 1);
-		if (y < numberOfRows)
+		//drawlinenocopy(y - 1, calculateoffset(y - 1));
+		if (y + verticalOffset < numberOfRows)
 		{
 			int actualXCache = actualX;
 			actualX = 0;
 			int xCache, yCache;
 			getyx(stdscr, yCache, xCache);
 			move(y, 0);
-			drawlinenocopy(y);
+			drawlinenocopy(y + verticalOffset, 0);
 			move(yCache, xCache);
 			actualX = actualXCache;
 		}
@@ -497,19 +607,19 @@ int processchar(int sizeY, int sizeX, int charin)
 				insertrow(y, "");
 			}
 			
-			int nextActualX = rows[y - 1].length; //strlen(rows[y - 1].chars);
+			int nextActualX = rows[y - 1 + verticalOffset].length; //strlen(rows[y - 1].chars);
 			
 			char *tmp;
 			
-			tmp = malloc(rows[y - 2].length + rows[y - 1].length + 1); //malloc(strlen(rows[y - 2].chars) + strlen(rows[y - 1].chars) + 1);
+			tmp = malloc(rows[y - 2 + verticalOffset].length + rows[y - 1 + verticalOffset].length + 1); //malloc(strlen(rows[y - 2].chars) + strlen(rows[y - 1].chars) + 1);
 			
-			strcpy(tmp, rows[y - 2].chars);
-			strcat(tmp, rows[y - 1].chars);
+			strcpy(tmp, rows[y - 2 + verticalOffset].chars);
+			strcat(tmp, rows[y - 1 + verticalOffset].chars);
 			
-			rows[y - 2].chars = malloc(strlen(tmp));
-			strcpy(rows[y - 2].chars, tmp);
+			rows[y - 2 + verticalOffset].chars = malloc(strlen(tmp));
+			strcpy(rows[y - 2 + verticalOffset].chars, tmp);
 			
-			removerow(y - 1);
+			removerow(y - 1 + verticalOffset);
 			
 			int i = 0;
 			int actualXCache = actualX;
@@ -517,27 +627,28 @@ int processchar(int sizeY, int sizeX, int charin)
 			while (i < numberOfRows)
 			{
 				move(i + 1, 0);
-				if (i == y - 2)
+				if (i == y - 2 + verticalOffset)
 				{
 					actualX = actualXCache;
-					drawlinenocopy(i);
+					drawlinenocopy(i + verticalOffset, 0);//calculateoffset(y - 2, false));
 					actualX = 0;
 				}
 				else
 				{
-					drawlinenocopy(i);
+					drawlinenocopy(i + verticalOffset, 0);
 				}
 				
 				i++;
 			}
 			
-			move(numberOfRows + 1, 0);
+			move(numberOfRows + 1 - verticalOffset, 0);
 			clrtoeol();
 			
 			move(y, 0);
 			
 			//actualX = actualXCache;
 			actualX = 0;
+			xRequest = actualX;
 			i = 0;
 			while (i <= nextActualX)
 			{
@@ -545,22 +656,22 @@ int processchar(int sizeY, int sizeX, int charin)
 				i++;
 			}
 			
-			removerow(y);
+			removerow(y + verticalOffset);
 			//actualX = nextActualX;
 		}
 		else
 		{
 			int y,x;
 			getyx(stdscr, y, x);
-			deletechar(y - 1, x);
-			drawlinenocopy(y - 1);
+			deletechar(y - 1 + verticalOffset, x);
+			//drawlinenocopy(y - 1, calculateoffset(y - 1, false));
 			processchar(sizeY, sizeX, 277968);
 		}
 		// move cursor
 		//processchar(sizeY, sizeX, 277968);
-		if (y < numberOfRows)
+		if (y + verticalOffset < numberOfRows)
 		{
-			drawlinenocopy(y);
+			drawlinenocopy(y + verticalOffset, 0);//calculateoffset(y, false));
 		}
 		refresh();
 	}
@@ -568,13 +679,93 @@ int processchar(int sizeY, int sizeX, int charin)
 	return 0;
 }
 
-int drawlinenocopy(int row)
+int drawrows()
 {
-	int y,x;
+	int sizeY, sizeX;
+	getsize(&sizeX, &sizeY);
+	
+	int i = verticalOffset;
+	
+	while (i - verticalOffset + 1 < sizeY)
+	{
+		drawlinenocopy(i, 0);
+		i++;
+	}
+}
+
+int calculateoffset(int row, bool movingright)
+{
+	int sizeY, sizeX;
+	getsize(&sizeX, &sizeY);
+	
+	if (rows[row].length <= sizeX)
+	{
+		return 0;
+	}
+	//else if (actualX < sizeX - 8)
+	//{
+	//	return 0;
+	//}
+	else
+	{
+		int i = 0;
+		int y,x;
+		getsize(&x, &y);
+		
+		/*if (actualX - x < 7)
+		{
+			return 8 * (x / 8);
+		}*/
+		
+		if (movingright)
+		{
+			if (x < sizeX - 1)
+			{
+				return rowOffset;
+			}
+			while (i < (actualX) - (sizeX - 2))
+			{
+				i += 1;
+			}
+		}
+		else
+		{
+			if (x > 1)
+			{
+				return rowOffset;
+			}
+			while (i < (actualX) - 2)
+			{
+				i += 1;
+			}
+		}
+		
+		if (rows[row].length - i < sizeX)
+		{
+			i = rows[row].length - sizeX + 8;
+		}
+		
+		return i;
+	}
+}
+
+int drawlinenocopy(int row, int offset)
+{
+	/*int y,x;
 	getyx(stdscr, y, x);
+	int sizeY, sizeX;
+	getsize(&sizeX, &sizeY);*/
 	char *text = malloc(rows[row].length);//malloc(strlen(rows[row].chars));
     strcpy(text, rows[row].chars);
-    drawline(row, text, actualX - x);
+    /*if (actualX < sizeX)
+    {
+    	drawline(row, text, 0);
+    }
+    else
+    {
+    	drawline(row, text, actualX - x);
+    }*/
+    drawline(row, text, offset);
     free(text);
 }
 
@@ -589,7 +780,7 @@ int drawline(int row, char *line, int offset)
 	
 	if (strlen(line) < sizeX)
 	{
-		writespecificline(row + 1, rows[row].chars);
+		writespecificline(row + 1 - verticalOffset, rows[row].chars);
 	}
 	else
 	{
@@ -597,17 +788,17 @@ int drawline(int row, char *line, int offset)
 		
 		strncpy(tmp, rows[row].chars+offset, sizeX);
 		
-		writespecificline(row + 1, tmp);
+		writespecificline(row + 1 - verticalOffset, tmp);
 		
 		if (offset > 0)
 		{
 			//tmp[0] = '<';
-			writespecificcharswithcolor(row + 1, 0, "<", COLOR_BLACK, COLOR_WHITE);
+			writespecificcharswithcolor(row + 1 - verticalOffset, 0, "<", COLOR_BLACK, COLOR_WHITE);
 		}
-		if (offset + sizeX < strlen(rows[row].chars))
+		if (offset + sizeX < rows[row].length)//strlen(rows[row].chars))
 		{
 			//tmp[sizeX - 1] = '>';
-			writespecificcharswithcolor(row + 1, sizeX - 1, ">", COLOR_BLACK, COLOR_WHITE);
+			writespecificcharswithcolor(row + 1 - verticalOffset, sizeX - 1, ">", COLOR_BLACK, COLOR_WHITE);
 		}
 		
 		free(tmp);
@@ -827,9 +1018,9 @@ int insertchar(int row, int insertbeforeindex, char insertchar[])//, char * rows
 	//strcpy(rows[row].chars, tmp);
 	//free(tmp);
 	char *tmp = insert_char_malloc(rows[row].chars, rows[row].length/*strlen(rows[row].chars)*/, insertchar, insertbeforeindex);
-	rows[row].chars = malloc(strlen(tmp));
-	rows[row].length = strlen(tmp);
-	memcpy(rows[row].chars, tmp, strlen(tmp));
+	rows[row].length = rows[row].length + 1;//strlen(tmp);
+	rows[row].chars = malloc(rows[row].length);//malloc(strlen(tmp));
+	memcpy(rows[row].chars, tmp, rows[row].length);
 	free(tmp);
 }
 
