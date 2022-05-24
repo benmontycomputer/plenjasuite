@@ -9,9 +9,9 @@
 #define TMPREFIX " Pint Editor - "
 
 int getsize(int *x, int *y);
-void writespecificline(int line, char *chars[]);
+void writespecificline(int line, char *chars);
 int edit(char filename1[]);
-void writespecificlinewithcolor(int line, char *chars[], int textcolor, int backgroundcolor);
+void writespecificlinewithcolor(int line, char *chars, int textcolor, int backgroundcolor);
 int countlines(char *filename);
 
 int insertrow(int insertbeforeindex, char row[]);
@@ -19,8 +19,8 @@ int insertchar(int row, int insertbeforeindex, char insertchar[]);
 int expandrow(int row);
 int expandrows();
 int drawlinenocopy(int row, int offset);
-int drawline(int row, char *line, int offset);
-void writespecificcharswithcolor(int line, int charindex, char *chars[], int textcolor, int backgroundcolor);
+int drawline(int row, char *line, int offset, int linelen);
+void writespecificcharswithcolor(int line, int charindex, char *chars, int textcolor, int backgroundcolor);
 int removerow(int index);
 int deletechar(int row, int deleteindex);
 char* insert_char_realloc (char *str, int len, char c, int pos);
@@ -311,7 +311,7 @@ int processchar(int sizeY, int sizeX, int charin)
 	{
 		int y,x;
 		getyx(stdscr, y, x);
-		
+	
 		if (actualX == 0)
 		{
 			if (y == 1)
@@ -360,10 +360,18 @@ int processchar(int sizeY, int sizeX, int charin)
 			actualX--;
 			xRequest = actualX;
 			//fprintf(stderr, "%d ", rowOffset);
+			//move(y, actualX - rowOffset);
+			int rowOffsetOld = rowOffset;
 			rowOffset = calculateoffset(y - 1 + verticalOffset, false);
+			//if (rowOffsetOld == rowOffset)
+			//{
+			//	move(y, actualX - rowOffset);
+			//}
 			//fprintf(stderr, "%d \n", rowOffset);
 			drawlinenocopy(y - 1 + verticalOffset, rowOffset);
+			//processchar(sizeY, sizeX, 277968);
 			move(y, actualX - rowOffset);
+			//refresh();
 		}
 		//drawlinenocopy(y - 1, calculateoffset(y - 1, false)); //update the row
 		
@@ -492,17 +500,20 @@ int processchar(int sizeY, int sizeX, int charin)
 		
 		if (y - 2 + verticalOffset < 0)
 		{
+			//tmpint += 
 			return;
-		}
-		
-		if (xRequest < rows[y - 2 + verticalOffset].length)
-		{
-			//tmpint += rows[y - 2].length;
-			tmpint += rows[y - 2 + verticalOffset].length - xRequest;
 		}
 		else
 		{
-			//tmpint += rows[y - 2].length - xRequest;
+			if (xRequest < rows[y - 2 + verticalOffset].length)
+			{
+				//tmpint += rows[y - 2].length;
+				tmpint += rows[y - 2 + verticalOffset].length - xRequest;
+			}
+			else
+			{
+				//tmpint += rows[y - 2].length - xRequest;
+			}
 		}
 		
 		while (tmpint > 0)
@@ -511,12 +522,17 @@ int processchar(int sizeY, int sizeX, int charin)
 			tmpint--;
 		}
 		
-		if (rowOffset < sizeX)
-		{
-			rowOffset = 0;
+		//if (rowOffset < sizeX)
+		//{
+			/*rowOffset = 0;
 			//rowOffset = calculateoffset(y, true);
-			drawlinenocopy(y - 2 + verticalOffset, 0);//actualX - rowOffset);
-		}
+			if (y - 2 + verticalOffset >= 0)
+			{
+				drawlinenocopy(y - 2 + verticalOffset, 0);//actualX - rowOffset);
+			}*/
+		//	processchar(sizeY, sizeX, 277968);
+		//	processchar(sizeY, sizeX, 277967);
+		//}
 		
 		xRequest = xRequestCache;
 	}
@@ -569,7 +585,7 @@ int processchar(int sizeY, int sizeX, int charin)
 		getyx(stdscr, y, x);
 		char *newchar = charin;//malloc(1);
 		//newchar = charin;
-		insertchar(y - 1 + verticalOffset, x, newchar);
+		insertchar(y - 1 + verticalOffset, x + rowOffset, newchar);
 		//free(newchar);
 		processchar(sizeY, sizeX, 277967);
 		//move(y, x + 1);
@@ -710,8 +726,9 @@ int calculateoffset(int row, bool movingright)
 	{
 		int i = 0;
 		int y,x;
-		getsize(&x, &y);
-		
+		//getsize(&x, &y);
+		getyx(stdscr, y, x);
+
 		/*if (actualX - x < 7)
 		{
 			return 8 * (x / 8);
@@ -721,22 +738,28 @@ int calculateoffset(int row, bool movingright)
 		{
 			if (x < sizeX - 1)
 			{
-				return rowOffset;
+				i = rowOffset;
 			}
-			while (i < (actualX) - (sizeX - 2))
+			else
 			{
-				i += 1;
+				while (i < (actualX) - (sizeX - 2))
+				{
+					i += 1;
+				}
 			}
 		}
 		else
 		{
 			if (x > 1)
 			{
-				return rowOffset;
+				i = rowOffset;
 			}
-			while (i < (actualX) - 2)
+			else
 			{
-				i += 1;
+				while (i < (actualX) - 1)
+				{
+					i += 1;
+				}
 			}
 		}
 		
@@ -765,20 +788,20 @@ int drawlinenocopy(int row, int offset)
     {
     	drawline(row, text, actualX - x);
     }*/
-    drawline(row, text, offset);
+    drawline(row, text, offset, rows[row].length);
     free(text);
 }
 
-int drawline(int row, char *line, int offset)
+int drawline(int row, char *line, int offset, int linelen)
 {
-	rows[row].chars = malloc(strlen(line));
+	rows[row].chars = malloc(linelen);//strlen(line));
 	strcpy(rows[row].chars, line);
-	rows[row].length = strlen(line);
+	rows[row].length = linelen;//strlen(line);
 	
 	int sizeY, sizeX;
 	getsize(&sizeX, &sizeY);
 	
-	if (strlen(line) < sizeX)
+	if (linelen < sizeX)//strlen(line) < sizeX)
 	{
 		writespecificline(row + 1 - verticalOffset, rows[row].chars);
 	}
@@ -1108,7 +1131,7 @@ int getsize(int *x, int *y) {
     return 0;
 }
 
-void writespecificline(int line, char *chars[]) {
+void writespecificline(int line, char *chars) {
 	//char *tmp = malloc(strlen(chars) + 1);
 	//tmp[strlen(chars)] = '\0';
 	int y,x;
@@ -1118,7 +1141,7 @@ void writespecificline(int line, char *chars[]) {
     addstr(chars);
     move(y, x);
 }
-void writespecificlinewithcolor(int line, char *chars[], int textcolor, int backgroundcolor) {
+void writespecificlinewithcolor(int line, char *chars, int textcolor, int backgroundcolor) {
 	int y,x;
 	getyx(stdscr, y, x);
 	init_pair(1, textcolor, backgroundcolor);
@@ -1129,7 +1152,7 @@ void writespecificlinewithcolor(int line, char *chars[], int textcolor, int back
     attroff(COLOR_PAIR(1));
     move(y, x);
 }
-void writespecificcharswithcolor(int line, int charindex, char *chars[], int textcolor, int backgroundcolor) {
+void writespecificcharswithcolor(int line, int charindex, char *chars, int textcolor, int backgroundcolor) {
 	int y,x;
 	getyx(stdscr, y, x);
 	init_pair(1, textcolor, backgroundcolor);
