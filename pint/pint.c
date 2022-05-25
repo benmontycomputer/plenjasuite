@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     	}
     	if (strcmp(argv[1], "--version") == 0)
     	{
-    		printf("pint v0.0.1-alpha.1\n");
+    		printf("pint v0.0.1-alpha.2\n");
     		return 0;
     	}
     	
