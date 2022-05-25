@@ -200,26 +200,31 @@ int edit(char filename1[]) {
     
     char *bottom1 = malloc(sizeX);
     
-    memcpy(bottom1, "Ctrl+X: Save", 12);
-    i = 12;
+    strcpy(bottom1, "^X: Quit    ^W: Write");
+    i = strlen(bottom1);
     while (i < sizeX)
     {
     	//strncat(bottom1, , 1);
     	bottom1[i] = ' ';
     	i++;
     }
-    /*char *bottom2 = malloc(sizeX);
+    /*char *bottom2 = malloc(sizeX + 1);
     memcpy(bottom2, " ", 2);
     i = 0;
     while (i < sizeX)
     {
     	strncat(bottom2, " ", 1);
     	i++;
-    }*/
+    }
+
+	bottom2[sizeX] = '\0';*/
     
-    writespecificlinewithcolor(sizeY - 2, bottom1, COLOR_BLACK, COLOR_WHITE);
+    //writespecificlinewithcolor(sizeY - 2, bottom1, COLOR_WHITE, COLOR_BLACK);
+	writespecificline(sizeY - 2, bottom1);
     //writespecificlinewithcolor(sizeY - 1, bottom2, COLOR_BLACK, COLOR_WHITE);
     free(bottom1);
+	writespecificcharswithcolor(sizeY - 2, 0, "^X", COLOR_BLACK, COLOR_WHITE);
+	writespecificcharswithcolor(sizeY - 2, 12, "^W", COLOR_BLACK, COLOR_WHITE);
     //free(bottom2);
     
     //intrflush(stdscr, false);
@@ -249,7 +254,10 @@ int edit(char filename1[]) {
     		save();
     		return;
     	}
-    	//printf("%d ", ch);
+		else if (result == 2)
+    	{
+    		save();
+    	}
     	//getch();
     }
     /*while (true)
@@ -271,10 +279,15 @@ int save()
 		int i = 0;
 		while (i < numberOfRows)
 		{
-			char tmp[rows[i].length];
-			strcpy(tmp, rows[i].chars);
-			fputs(rows[i].chars, file);
-			fputs("\n", file);
+			//char tmp[rows[i].length];
+			char *tmp = malloc(rows[i].length + 2);
+			strncpy(tmp, rows[i].chars, rows[i].length);
+			tmp[rows[i].length] = '\n';
+			tmp[rows[i].length + 1] = '\0';
+			//fputs(rows[i].chars, file);
+			fputs(tmp, file);
+			free(tmp);
+			//fputs('\n', file);
 			
 			//printf("adding line");
 			
@@ -288,10 +301,32 @@ int save()
 	}
 	else
 	{
-		fprintf(stderr, "%s %s", "failed to save: ", filename1);
+		int sizeY, sizeX;
+		getsize(&sizeX, &sizeY);
+		//fprintf(stderr, "%s %s", "failed to save: ", filename1);
+		stdmessage(sizeY, sizeX, "Failed to save.");
+		refresh();
 	}
 	
 	//free(file);
+}
+
+int stdmessage(int sizeY, int sizeX, char *message)
+{
+	int buffersize = (sizeX - strlen(message)) / 2;
+
+	if (strlen(message) + 1 < sizeX)
+	{
+		char *output = malloc(strlen(message) + 2);
+		strncpy(output, "[", 1);
+		strncat(output, message, strlen(message));
+		strncat(output, "]", 1);
+		writespecificcharswithcolor(sizeY - 3, buffersize - 1, output, COLOR_BLACK, COLOR_WHITE);
+	}
+	else
+	{
+		writespecificcharswithcolor(sizeY - 3, buffersize, message, COLOR_BLACK, COLOR_WHITE);
+	}
 }
 
 int processchar(int sizeY, int sizeX, int charin)
@@ -319,11 +354,19 @@ int processchar(int sizeY, int sizeX, int charin)
 				if (verticalOffset == 0)
 				{
 					// can't move
+					//return 0;
 				}
 				else
 				{
 					verticalOffset--;
+					
+					actualX = rows[y + verticalOffset - 1].length;
+					xRequest = actualX;
+					//rowOffset = rows[y + verticalOffset - 1].length - sizeX + 8;
+					rowOffset = calculateoffset(y + verticalOffset - 1, false);
 					drawrows();
+					move(y, actualX - rowOffset);
+					drawlinenocopy(y + verticalOffset - 1, rowOffset);
 				}
 			}
 			else
@@ -396,7 +439,7 @@ int processchar(int sizeY, int sizeX, int charin)
 		
 		if (actualX == rows[y - 1 + verticalOffset].length)//strlen(rows[y - 1].chars))
 		{
-			if (y + verticalOffset >= numberOfRows || y > sizeY - 2)
+			if (y + verticalOffset >= numberOfRows || y >= sizeY - 3)
 			{
 				if (y + verticalOffset >= numberOfRows)
 				{
@@ -571,7 +614,13 @@ int processchar(int sizeY, int sizeX, int charin)
 		
 		refresh();
 	}
-	else if (charin == 24) // ctrl+x?
+	else if (charin == 23) // ctrl+w
+	{
+		//fprintf(stderr, "ctrl+x");
+		//saveandclose();
+		return 2;
+	}
+	else if (charin == 24) // ctrl+x
 	{
 		//fprintf(stderr, "ctrl+x");
 		//saveandclose();
@@ -593,7 +642,7 @@ int processchar(int sizeY, int sizeX, int charin)
 		//xRequest = actualX;
 		
 		//drawlinenocopy(y - 1, calculateoffset(y - 1));
-		if (y + verticalOffset < numberOfRows)
+		/*if (y + verticalOffset < numberOfRows)
 		{
 			int actualXCache = actualX;
 			actualX = 0;
@@ -603,7 +652,7 @@ int processchar(int sizeY, int sizeX, int charin)
 			drawlinenocopy(y + verticalOffset, 0);
 			move(yCache, xCache);
 			actualX = actualXCache;
-		}
+		}*/
 		//fprintf(stderr, "%s \n", rows[y - 1].chars);
 		
 		refresh();
@@ -778,7 +827,8 @@ int drawlinenocopy(int row, int offset)
 	getyx(stdscr, y, x);
 	int sizeY, sizeX;
 	getsize(&sizeX, &sizeY);*/
-	char *text = malloc(rows[row].length);//malloc(strlen(rows[row].chars));
+	//char *text = malloc(rows[row].length);//malloc(strlen(rows[row].chars));
+	char text[rows[row].length];
     strcpy(text, rows[row].chars);
     /*if (actualX < sizeX)
     {
@@ -788,28 +838,38 @@ int drawlinenocopy(int row, int offset)
     {
     	drawline(row, text, actualX - x);
     }*/
-    drawline(row, text, offset, rows[row].length);
-    free(text);
+    //drawline(row, text, offset, rows[row].length);
+	drawline(row, text, offset, rows[row].length);
+    //free(text);
 }
 
 int drawline(int row, char *line, int offset, int linelen)
 {
 	rows[row].chars = malloc(linelen);//strlen(line));
-	strcpy(rows[row].chars, line);
+	strncpy(rows[row].chars, line, linelen);
 	rows[row].length = linelen;//strlen(line);
+
+	char text[linelen + 1];
+	strncpy(text, rows[row].chars, rows[row].length);
+	text[linelen] = '\0';
 	
 	int sizeY, sizeX;
 	getsize(&sizeX, &sizeY);
 	
+	if (row + 1 - verticalOffset - sizeY > -3)
+	{
+		return;
+	}
+
 	if (linelen < sizeX)//strlen(line) < sizeX)
 	{
-		writespecificline(row + 1 - verticalOffset, rows[row].chars);
+		writespecificline(row + 1 - verticalOffset, text);
 	}
 	else
 	{
 		char *tmp = malloc(sizeX);
 		
-		strncpy(tmp, rows[row].chars+offset, sizeX);
+		strncpy(tmp, text+offset, sizeX);
 		
 		writespecificline(row + 1 - verticalOffset, tmp);
 		
@@ -1041,9 +1101,10 @@ int insertchar(int row, int insertbeforeindex, char insertchar[])//, char * rows
 	//strcpy(rows[row].chars, tmp);
 	//free(tmp);
 	char *tmp = insert_char_malloc(rows[row].chars, rows[row].length/*strlen(rows[row].chars)*/, insertchar, insertbeforeindex);
-	rows[row].length = rows[row].length + 1;//strlen(tmp);
+	//rows[row].length = rows[row].length + 1;//strlen(tmp);
 	rows[row].chars = malloc(rows[row].length);//malloc(strlen(tmp));
-	memcpy(rows[row].chars, tmp, rows[row].length);
+	//memcpy(rows[row].chars, tmp, rows[row].length);
+	strncpy(rows[row].chars, tmp, rows[row].length);
 	free(tmp);
 }
 
@@ -1152,6 +1213,7 @@ void writespecificlinewithcolor(int line, char *chars, int textcolor, int backgr
     attroff(COLOR_PAIR(1));
     move(y, x);
 }
+
 void writespecificcharswithcolor(int line, int charindex, char *chars, int textcolor, int backgroundcolor) {
 	int y,x;
 	getyx(stdscr, y, x);
