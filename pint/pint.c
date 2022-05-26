@@ -6,6 +6,7 @@
 #include<signal.h>
 #include<errno.h>
 #include "pint.h"
+#include "libplenja.h"
 
 #define TMPREFIX " Pint Editor - "
 #define TABSIZE 8
@@ -152,7 +153,7 @@ int edit(char filename1[]) {
     
     int linenumber = 0;
     
-    rows = malloc(countlines(filename1) * sizeof(editorRow));
+    rows = malloc(countLines(filename1) * sizeof(editorRow));
     //printf(" %d ", countlines(filename1));
     
     while ((currentread = getline(&currentline, &len, file)) != -1)
@@ -173,6 +174,22 @@ int edit(char filename1[]) {
     }
     fclose(file);
     free(currentline);
+    /*rows = malloc(countlines(filename) * sizeof(editorRow));
+    fileLine *lines;
+    openFile(filename, lines);
+    long numberOfRows1 = countlines(filename);
+    if (numberOfRows1 == -1)
+    {
+        printf("error opening file.");
+        return 1;
+    }
+    int i = 0;
+    while (i < numberOfRows1)
+    {
+        insertrow(i, lines[i].chars);
+
+        i++;
+    }*/
     //return;
     
     //insertrow(linenumber, "");
@@ -184,7 +201,8 @@ int edit(char filename1[]) {
     //insertchar(2, 6, 'o');
     
     int i = 0;
-    
+    //i = 0;
+
     while (i + 3 < sizeY, i < numberOfRows)
     {
         //writespecificline(i + 1, rows[i].chars);
@@ -273,12 +291,18 @@ int edit(char filename1[]) {
             int ch = getchar();
             if (ch == 'y')
             {
-                save();
-                return;
+                if (save() == 0)
+                {
+                    return 0;
+                }
+                else
+                {
+                    stdmessage(sizeY, sizeX, "Failed to save.");
+                }
             }
             else if (ch == 'n')
             {
-                return;
+                return 0;
             }
             else if (ch == 'c')
             {
@@ -324,7 +348,7 @@ int edit(char filename1[]) {
 
 int save()
 {
-    char filename1[strlen(filename)];
+    /*char filename1[strlen(filename)];
     strcpy(filename1, filename);
     
     FILE *file = fopen(filename1, "w");
@@ -360,7 +384,21 @@ int save()
         //fprintf(stderr, "%s %s", "failed to save: ", filename1);
         stdmessage(sizeY, sizeX, "Failed to save.");
         refresh();
+    }*/
+
+    fileLine *lines = malloc(numberOfRows * sizeof(fileLine));
+    
+    int i = 0;
+    while (i < numberOfRows)
+    {
+        lines[i].chars = malloc(rows[i].reallength);
+        strncpy(lines[i].chars, rows[i].chars, rows[i].reallength);
+        lines[i].length = rows[i].reallength;
+        i++;
     }
+
+    writeFile(filename, lines, numberOfRows);
+    //free(rowsChars);
     
     //free(file);
 }
@@ -709,7 +747,7 @@ int processchar(int sizeY, int sizeX, long charin)
         if (y - 2 + verticalOffset < 0)
         {
             //tmpint += 
-            return;
+            return 0;
         }
         else
         {
@@ -837,7 +875,7 @@ int processchar(int sizeY, int sizeX, long charin)
         {
             if (y == 1)
             {
-                return;
+                return 0;
             }
             if (y == numberOfRows)
             {
@@ -1052,7 +1090,7 @@ int drawline(int row, char *line, int offset, int linelen)
     
     if (row + 1 - verticalOffset - sizeY > -3)
     {
-        return;
+        return 1;
     }
 
     if (linelen < sizeX)//strlen(line) < sizeX)
@@ -1084,7 +1122,7 @@ int drawline(int row, char *line, int offset, int linelen)
 }
 
 //https://stackoverflow.com/questions/12733105/c-function-that-counts-lines-in-file
-int countlines(char *filename)
+/*int countlines(char *filename)
 {
   // count the number of lines in the file called filename                                    
   FILE *fp = fopen(filename,"r");
@@ -1106,7 +1144,7 @@ int countlines(char *filename)
   fclose(fp);
   
   return lines;
-}
+}*/
 
 int insertrow(int insertbeforeindex, char row[])//, char * rows2)
 {
@@ -1352,7 +1390,7 @@ int calculatetabwidth(int row, int index)//, bool realpos)
     return 8 - i % 8;
 }
 
-int insertchar(int row, int insertbeforeindex, char insertchar[])//, char * rows2)
+int insertchar(int row, int insertbeforeindex, char *insertchar)//, char * rows2)
 {
     expandrow(row);
     
@@ -1464,30 +1502,30 @@ int insertchar(int row, int insertbeforeindex, char insertchar[])//, char * rows
     free(tmp);
 }
 
-char* insert_char_malloc (char *str, int len, char c, int pos)
+/*char* insert_char_malloc (char *str, int len, char c, int pos)
 {
-char *p;
-int i;
+    char *p;
+    int i;
 
-p = malloc(len + 2);
-for (i = 0 ; i < pos ; ++i)
-p[i] = str[i];
-p[i++] = c;
-for ( ; i < len + 2 ; ++i)
-p[i] = str[i - 1];
-free(str);
-return p;
-}
+    p = malloc(len + 2);
+    for (i = 0 ; i < pos ; ++i)
+    p[i] = str[i];
+    p[i++] = c;
+    for ( ; i < len + 2 ; ++i)
+    p[i] = str[i - 1];
+    free(str);
+    return p;
+}*/
 
 char* insert_char_realloc (char *str, int len, char c, int pos)
 {
-int i;
+    int i;
 
-str = realloc(str, len + 2);
-for (i = len + 1 ; i > pos ; --i)
-str[i] = str[i - 1];
-str[i] = c;
-return str;
+    str = realloc(str, len + 2);
+    for (i = len + 1 ; i > pos ; --i)
+    str[i] = str[i - 1];
+    str[i] = c;
+    return str;
 }
 
 int deletechar(int row, int deleteindex)

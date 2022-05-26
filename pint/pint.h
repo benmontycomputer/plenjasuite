@@ -5,10 +5,10 @@ int getsize(int *x, int *y);
 void writespecificline(int line, char *chars);
 int edit(char filename1[]);
 void writespecificlinewithcolor(int line, char *chars, int textcolor, int backgroundcolor);
-int countlines(char *filename);
+//int countlines(char *filename);
 
 int insertrow(int insertbeforeindex, char row[]);
-int insertchar(int row, int insertbeforeindex, char insertchar[]);
+int insertchar(int row, int insertbeforeindex, char *insertchar);
 int expandrow(int row);
 int expandrows();
 int drawlinenocopy(int row, int offset);
@@ -21,5 +21,12 @@ char* insert_char_malloc (char *str, int len, char c, int pos);
 
 int calculateoffset(int row, bool movingright);
 int calculatetabwidth(int row, int index);//, bool realpos);
+int processchar(int sizeY, int sizeX, long charin);
+int stdmessage(int sizeY, int sizeX, char *message);
+int save();
+int drawrows();
+int calculatearraypos(int row, int index);
+int calculatedisplaylength(int row);
+int calculatedisplaypos(int row, int arrayindex);
 
 #endif
