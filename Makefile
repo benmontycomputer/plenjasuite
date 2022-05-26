@@ -1,4 +1,7 @@
-all: terminal browser pint
+all: libplenja terminal browser pint
+
+libplenja:
+	make -C libplenja
 
 terminal:
 	sh -c "cd plenjaterminal && ./compile.sh"
@@ -11,3 +14,6 @@ pint:
 
 install_terminal:
 	make -C plenjaterminal install
+
+install_pint:
+	make -C pint install
