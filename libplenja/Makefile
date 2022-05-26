@@ -11,3 +11,4 @@ install:
 	cp libplenja.so /usr/lib/libplenja.so.0.0.0
 	ln -s libplenja.so.0.0.0 /usr/lib/libplenja.so.0
 	ln -s libplenja.so.0.0.0 /usr/lib/libplenja.so
+	cp libplenja.h /usr/include/libplenja.h
