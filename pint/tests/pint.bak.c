@@ -8,10 +8,6 @@
 #include "pint.h"
 #include "libplenja.h"
 #include<stdint.h>
-#include<locale.h>
-#include <wchar.h>
-#include <curses.h>
-#include<wctype.h>
 
 #define TMPREFIX " Pint Editor - "
 #define TABSIZE 8
@@ -43,7 +39,6 @@ static char *filename;
 //static char * rows;
 
 int main(int argc, char **argv) {
-    //setlocale(LC_ALL, "");
 	//initscr();
 
 	//char *filename;
@@ -71,7 +66,6 @@ int main(int argc, char **argv) {
 		strcpy(filename, DEFAULT_FILENAME);
 	}
 	
-    setlocale(LC_ALL, "en_US.UTF-8");
 	initscr();
 
 	//writespecificline(10, "1 argument passed");
@@ -125,10 +119,10 @@ int edit(char filename1[]) {
 	int sizeY = 0;
 
 	//https://stackoverflow.com/questions/7978315/ctrl-c-eaten-by-getchar
-	//struct sigaction sa;
-	//memset(&sa, 0, sizeof(struct sigaction));
-	//sa.sa_handler = sigHandler;
-	//sa.sa_flags = 0;// not SA_RESTART!;
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(struct sigaction));
+	sa.sa_handler = sigHandler;
+	sa.sa_flags = 0;// not SA_RESTART!;
 
 	//sigaction(SIGINT, &sa, NULL);
 	//sigaction(SIGTERM, &sa, NULL);
@@ -154,25 +148,53 @@ int edit(char filename1[]) {
         fclose(file);
     }
     
-    //char *topmessage = malloc(strlen(TMPREFIX) + strlen(filename1));
+    rows = malloc(0);
     
-    //strcpy(topmessage, TMPREFIX);
-    //strcat(topmessage, filename1);
+    int numberOfRows1 = countLines(filename1);
+    pstring * filelines = malloc(numberOfRows1 * sizeof(pstring));
+    filelines = openFile(filename);
     
-    char *tmchars = malloc(strlen(TMPREFIX) + strlen(filename));
-    strncpy(tmchars, TMPREFIX, strlen(TMPREFIX));
-    strncat(tmchars, filename, strlen(filename1));
+    long i = 0;
+    while (i < numberOfRows1)
+    {
+        insertrow(i, filelines[i]);
+        i++;
+    }
 
-    pstring topmessage = pstr_new_from_chars(tmchars, strlen(TMPREFIX) + strlen(filename));
-    writespecificlinewithcolor(0, topmessage, COLOR_BLACK, COLOR_WHITE);
-    //free(topmessage.chars);
-    //free(topmessage);
-    free(tmchars);
+    if (countLines(filename1) < 1)
+    {
+        pstring tmp;
+        tmp.chars = malloc(1);
+        strncpy(tmp.chars, "\0", 1);
+        tmp.len = 0;
+        insertrow(0, tmp);
+        fprintf(stderr, "169");
+    }
+    
+    i = 0;
+    //i = 0;
+
+    /*while (i + 3 < sizeY, i < numberOfRows)
+    {
+        //writespecificline(i + 1, rows[i].chars);
+        //insertrow(i, rows[i].chars);
+        drawlinenocopy(i, 0);
+        i = i + 1;
+    }*/
+    drawrows();
+    
+    char *topmessage = malloc(strlen(TMPREFIX) + strlen(filename1));
+    
+    strcpy(topmessage, TMPREFIX);
+    strcat(topmessage, filename1);
+    
+    //writespecificlinewithcolor(0, topmessage, COLOR_BLACK, COLOR_WHITE);
+    free(topmessage);
     
     char *bottom1 = malloc(sizeX);
     
     strcpy(bottom1, "^X: Quit    ^W: Write");
-    long i = strlen(bottom1);
+    i = strlen(bottom1);
     while (i < sizeX)
     {
         //strncat(bottom1, , 1);
@@ -190,49 +212,15 @@ int edit(char filename1[]) {
 
     bottom2[sizeX] = '\0';*/
     
-    pstring bottom1p = pstr_new_from_chars(bottom1, strlen(bottom1));
-
-    writespecificline(sizeY - 2, bottom1p);
+    //writespecificlinewithcolor(sizeY - 2, bottom1, COLOR_WHITE, COLOR_BLACK);
+    //writespecificline(sizeY - 2, bottom1);
+    //writespecificlinewithcolor(sizeY - 1, bottom2, COLOR_BLACK, COLOR_WHITE);
     free(bottom1);
     writespecificcharswithcolor(sizeY - 2, 0, "^X", COLOR_BLACK, COLOR_WHITE);
     writespecificcharswithcolor(sizeY - 2, 12, "^W", COLOR_BLACK, COLOR_WHITE);
+    //free(bottom2);
     
-    rows = malloc(0);
-    
-    int numberOfRows1 = countLines(filename1);
-    pstring * filelines = malloc(numberOfRows1 * sizeof(pstring));
-    filelines = openFile(filename);
-    
-    //long i = 0;
-    i = 0;
-    while (i < numberOfRows1)
-    {
-        insertrow(i, filelines[i]);
-        i++;
-    }
-
-    if (countLines(filename1) < 1)
-    {
-        /*pstring tmp;
-        tmp.chars = malloc(1);
-        strncpy(tmp.chars, "\0", 1);
-        tmp.len = 0;*/
-        pstring tmp = pstr_new();
-        insertrow(0, tmp);
-        fprintf(stderr, "169");
-    }
-    
-    i = 0;
-    //i = 0;
-
-    /*while (i + 3 < sizeY, i < numberOfRows)
-    {
-        //writespecificline(i + 1, rows[i].chars);
-        //insertrow(i, rows[i].chars);
-        drawlinenocopy(i, 0);
-        i = i + 1;
-    }*/
-    drawrows();
+    //intrflush(stdscr, false);
     
     keypad(stdscr, true);
     
@@ -270,27 +258,18 @@ int edit(char filename1[]) {
         if (result == 1)
         {
             //save();
-            stdmessage(sizeY, sizeX, "Do you want to save? (y)es/(n)o/(c)ancel\0");
+            stdmessage(sizeY, sizeX, "Do you want to save? (y)es/(n)o/(c)ancel");
             refresh();
             int ch = getchar();
             if (ch == 'y')
             {
-                int result = save();
-                if (result == 0)
+                if (save() == 0)
                 {
                     return 0;
                 }
                 else
                 {
-                    if (result == EACCES)
-                    {
-                        stdmessage(sizeY, sizeX, "Failed to save: permission denied.\0");
-                    }
-                    else
-                    {
-                        stdmessage(sizeY, sizeX, "Failed to save.\0");
-                    }
-                    refresh();
+                    stdmessage(sizeY, sizeX, "Failed to save.");
                 }
             }
             else if (ch == 'n')
@@ -317,7 +296,7 @@ int edit(char filename1[]) {
                 move(y, x);
                 refresh();
                 
-                stdmessage(sizeY, sizeX, "Invalid input. Not closing.\0");
+                stdmessage(sizeY, sizeX, "Invalid input. Not closing.");
                 refresh();
                 getchar();
             }
@@ -350,36 +329,30 @@ int save()
         i++;
     }
 
-    int result = writeFile(filename, lines, numberOfRows);
+    writeFile(filename, lines, numberOfRows);
     free(lines);
-    return result;
     //free(rowsChars);
     
     //free(file);
 }
 
-int stdmessage(int sizeY, int sizeX, char message[])
+int stdmessage(int sizeY, int sizeX, char *message)
 {
     int buffersize = (sizeX - strlen(message)) / 2;
 
     int x,y;
     getsize(&x, &y);
     move(sizeY - 3, 0);
-    clrtoeol();
+    clrtoeol;
     move(y, x);
 
     if (strlen(message) + 1 < sizeX)
     {
-        char output[strlen(message) + 3];
+        char *output = malloc(strlen(message) + 2);
         strncpy(output, "[", 1);
         strncat(output, message, strlen(message));
         strncat(output, "]", 1);
-        strncat(output, "\0", 1);
-        //pstring output = pstr_new_from_chars("[", 1);
-        //output = pstr_combine(output, pstr_new_from_chars(message, strlen(message)));
-        //output = pstr_combine(output, pstr_new_from_chars("]", 1));
         writespecificcharswithcolor(sizeY - 3, buffersize - 1, output, COLOR_BLACK, COLOR_WHITE);
-        //free(output);
     }
     else
     {
@@ -643,8 +616,6 @@ int processchar(int sizeY, int sizeX, long charin)
             else
             {
                 actualX++;
-                //actualX += utf8len(&rows[y - 1 + verticalOffset].chars.chars[i]);
-                //actualX = calculatedisplaypos(y - 1 + verticalOffset, i);
             }
             rowOffset = calculateoffset(y - 1 + verticalOffset, true);
             move(y, actualX - rowOffset);
@@ -673,14 +644,12 @@ int processchar(int sizeY, int sizeX, long charin)
     {
         int y,x;
         getyx(stdscr, y, x);
-        long row = y - 1 + verticalOffset;
+        long tmpint = rows[y - 1 + verticalOffset].chars.len - calculatearraypos(y - 1, actualX) + 1;
         
-        long tmpint = rows[row].chars.len - calculatearraypos(row, actualX) + 1;
-        
-        if (y + verticalOffset >= numberOfRows)
-        {
-            return 0;
-        }
+        //if (y + verticalOffset >= numberOfRows)
+        //{
+        //    return 0;
+        //}
         
         long xRequestCache = xRequest;
         if (xRequest > rows[y + verticalOffset].displaylength)
@@ -689,7 +658,7 @@ int processchar(int sizeY, int sizeX, long charin)
         }
         else
         {
-            tmpint += calculatearraypos(y + verticalOffset, xRequest);
+            tmpint += calculatearraypos(y, xRequest);
         }
         
         while (tmpint > 0)
@@ -712,7 +681,7 @@ int processchar(int sizeY, int sizeX, long charin)
         
         int y,x;
         getyx(stdscr, y, x);
-        long tmpint = calculatearraypos(y - 1 + verticalOffset, actualX) + 1; // -1?
+        long tmpint = calculatearraypos(y - 1, actualX) + 1; // -1?
         
         long xRequestCache = xRequest;
         
@@ -726,7 +695,7 @@ int processchar(int sizeY, int sizeX, long charin)
             if (xRequest < rows[y - 2 + verticalOffset].displaylength)
             {
                 //tmpint += rows[y - 2].length;
-                tmpint += rows[y - 2 + verticalOffset].chars.len - calculatearraypos(y - 2 + verticalOffset, xRequest);
+                tmpint += rows[y - 2 + verticalOffset].chars.len - calculatearraypos(y - 2, xRequest);
             }
             else
             {
@@ -829,7 +798,7 @@ int processchar(int sizeY, int sizeX, long charin)
         //printf("isalnum");
         int y,x;
         getyx(stdscr, y, x);
-        char newchar = charin;//malloc(1);
+        char *newchar = charin;//malloc(1);
         //newchar = charin;
         insertchar(y - 1 + verticalOffset, x + rowOffset, newchar);
         //free(newchar);
@@ -920,7 +889,7 @@ int processchar(int sizeY, int sizeX, long charin)
 
 int calculatedisplaylength(long row)
 {
-    /*long i = 0;//rows[row].reallength - 1;
+    long i = 0;//rows[row].reallength - 1;
     long newlen = 0;
     while (i < rows[row].chars.len)
     {
@@ -936,8 +905,7 @@ int calculatedisplaylength(long row)
         i++;
     }
 
-    return newlen;*/
-    return calculatedisplaypos(row, rows[row].chars.len - 1);
+    return newlen;
 }
 
 int drawrows()
@@ -1254,12 +1222,11 @@ int calculatedisplaypos(long row, long arrayindex)
         }
         if (rows[row].chars.chars[i] == '\t')
         {
-            //newlen += 8 - newlen % 8;//(i + 8) / 8 * 8 - i;
-            newlen += 8 - newlen % 8 - 1;
+            newlen += 8 - newlen % 8;//(i + 8) / 8 * 8 - i;
         }
         else
         {
-            //newlen++;
+            newlen++;
         }
 
         i++;
@@ -1273,7 +1240,6 @@ int calculatedisplaypos(long row, long arrayindex)
         }*/
     }
 
-    newlen += utf8len(pstr_get_terminated(rows[row].chars).chars);
     return(newlen);
 }
 
@@ -1290,13 +1256,11 @@ int calculatearraypos(long row, long index)
         }
         if (rows[row].chars.chars[i] == '\t')
         {
-            //newlen += 8 - newlen % 8;//(i + 8) / 8 * 8 - i;
-            newlen += 8 - newlen % 8;
+            newlen += 8 - newlen % 8;//(i + 8) / 8 * 8 - i;
         }
         else
         {
-            newlen += utf8len(&rows[row].chars.chars[i]);
-            //newlen++;
+            newlen++;
         }
 
         i++;
