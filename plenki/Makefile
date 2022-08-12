@@ -1,4 +1,4 @@
 all: plenki
 
 plenki:
-	gcc plinki.c -o bin/plenki
+	gcc plenki.c -o bin/plenki
