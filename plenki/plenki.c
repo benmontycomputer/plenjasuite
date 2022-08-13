@@ -337,6 +337,10 @@ int main(int argc, char* argv[]) {
 					}
 					act=true;
 					break;
+				case 'd':
+					pop=true;
+					act=true;
+					break;
 
 			}
 		}
