@@ -53,13 +53,14 @@ int main(int argc, char* argv[]) {
 					printf("%d %s\r\n",len,front[0]);
 
 		}
-	}
-
 	fclose(fp);
 	//testing file read
 	for (int i=0; i<len; i++) {
 		printf("%s - %s\n", front[i],back[i]);
 	}
+	}
+
+	
 	//exit(1);
 
 	//main loop
