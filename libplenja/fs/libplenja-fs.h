@@ -1,13 +1,9 @@
 #ifndef PLENJA_FS_H
 #define PLENJA_FS_H
+#include "libplenja.h"
 
-typedef struct fileLine {
-    char *chars;
-    long length;
-} fileLine;
-
-int writeFile(char *filename, fileLine *lines, long lineCount);
-long openFile(char *filename, fileLine *lines);
+int writeFile(char *filename, pstring *lines, long lineCount);
+pstring* openFile(char *filename);
 long countLines(char *filename);
 
 #endif

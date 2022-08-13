@@ -2,19 +2,18 @@
 #include "libplenja-fs.h"
 #include<stdlib.h>
 #include<string.h>
+#include<errno.h>
 
-int writeFile(char *filename, fileLine *lines, long lineCount)
+int writeFile(char *filename, pstring *lines, long lineCount)
 {
+    int errnum;
     FILE *file = fopen(filename, "w");
     if (file)
     {
-        int i = 0;
+        long i = 0;
         while (i < lineCount)
         {
-            lines[i].chars = realloc(lines[i].chars, lines[i].length + 1);
-            lines[i].chars[lines[i].length] = '\0';
-            lines[i].length++;
-            fputs(lines[i].chars, file);
+            fputs(pstr_get_terminated(lines[i]).chars, file);
             fputs("\n", file);
 
             i++;
@@ -25,17 +24,20 @@ int writeFile(char *filename, fileLine *lines, long lineCount)
     }
     else
     {
-        return 1;
+        errnum = errno;
+        //if (errnum == EAC)
+        //return 1;
+        return errnum;
     }
 }
 
-long openFile(char *filename, fileLine *out)
+pstring* openFile(char *filename)
 {
     FILE * file = fopen(filename, "r");
     if (file == NULL)
     {
-        printf("no file...");
-        return -1;
+        //printf("no file...");
+        return NULL;
     }
     
     char* currentline;
@@ -44,7 +46,7 @@ long openFile(char *filename, fileLine *out)
     
     long linenumber = 0;
     
-    out = malloc(countLines(filename) * sizeof(fileLine));
+    pstring * out = malloc(countLines(filename) * sizeof(pstring));
     //printf(" %d ", countlines(filename1));
     
     while ((currentread = getline(&currentline, &len, file)) != -1)
@@ -53,7 +55,7 @@ long openFile(char *filename, fileLine *out)
         //insertrow(linenumber, currentline);
         out[linenumber].chars = malloc(strlen(currentline));
         strncpy(out[linenumber].chars, currentline, strlen(currentline));
-        out[linenumber].length = strlen(currentline);
+        out[linenumber].len = strlen(currentline);
         //free(currentline2);
         linenumber = linenumber + 1;
         //numberOfRows++;
@@ -61,14 +63,45 @@ long openFile(char *filename, fileLine *out)
     fclose(file);
     free(currentline);
 
-    return linenumber;
+    return out;
 }
 
+#define BUF_SIZE 65536
+
+long countLines(char *filename)
+{
+    FILE *file = fopen(filename,"r");
+
+    if (file == NULL)
+    {
+        return 0;
+    }
+
+    char buf[BUF_SIZE];
+    int counter = 0;
+    for(;;)
+    {
+        size_t res = fread(buf, 1, BUF_SIZE, file);
+        if (ferror(file))
+            return -1;
+
+        int i;
+        for(i = 0; i < res; i++)
+            if (buf[i] == '\n')
+                counter++;
+
+        if (feof(file))
+            break;
+    }
+
+    return counter;
+}
+/*
 long countLines(char *filename)
 {
     // count the number of lines in the file called filename                                    
     FILE *fp = fopen(filename,"r");
-    long ch=0;
+    int ch=0;
     long lines=0;
 
     if (fp == NULL)
@@ -88,4 +121,4 @@ long countLines(char *filename)
     fclose(fp);
     
     return lines;
-}
+}*/

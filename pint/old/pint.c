@@ -8,19 +8,37 @@
 #include "pint.h"
 #include "libplenja.h"
 #include<stdint.h>
-#include<locale.h>
-#include <wchar.h>
-#include <curses.h>
-#include<wctype.h>
 
 #define TMPREFIX " Pint Editor - "
 #define TABSIZE 8
 #define DEFAULT_FILENAME ".pinttmp"
 
+/*int getsize(int *x, int *y);
+void writespecificline(int line, char *chars);
+int edit(char filename1[]);
+void writespecificlinewithcolor(int line, char *chars, int textcolor, int backgroundcolor);
+int countlines(char *filename);
+
+int insertrow(int insertbeforeindex, char row[]);
+int insertchar(int row, int insertbeforeindex, char insertchar[]);
+int expandrow(int row);
+int expandrows();
+int drawlinenocopy(int row, int offset);
+int drawline(int row, char *line, int offset, int linelen);
+void writespecificcharswithcolor(int line, int charindex, char *chars, int textcolor, int backgroundcolor);
+int removerow(int index);
+int deletechar(int row, int deleteindex);
+char* insert_char_realloc (char *str, int len, char c, int pos);
+char* insert_char_malloc (char *str, int len, char c, int pos);
+
+int calculateoffset(int row, bool movingright);*/
+
 typedef struct editorRow
 {
-	pstring chars;
-	long displaylength;
+    //char *chars;
+    char *chars;
+    long displaylength;
+    long reallength;
 } editorRow;
 
 static struct editorRow *rows;
@@ -34,7 +52,7 @@ static long verticalOffset = 0;
 static char done = 0;
 static void sigHandler(int signum)
 {
-	done = 1;
+    done = 1;
 }
 
 static char *filename;
@@ -43,136 +61,193 @@ static char *filename;
 //static char * rows;
 
 int main(int argc, char **argv) {
-    //setlocale(LC_ALL, "");
-	//initscr();
+    //initscr();
+    
+    //char *filename;
 
-	//char *filename;
+    if (argc == 2) {
+        if (strcmp(argv[1], "--help") == 0)
+        {
+            printf("Usage:\n");
+            printf(argv[0]);
+            printf(" [FILE]\n");
+            return 0;
+        }
+        if (strcmp(argv[1], "--version") == 0)
+        {
+            printf("pint v0.0.1-alpha.2\n");
+            return 0;
+        }
 
-	if (argc == 2) {
-		if (strcmp(argv[1], "--help") == 0)
-		{
-			printf("Usage:\n");
-			printf(argv[0]);
-			printf(" [FILE]\n");
-			return 0;
-		}
-		if (strcmp(argv[1], "--version") == 0)
-		{
-			printf("pint v0.0.1-alpha.2\n");
-			return 0;
-		}
-
-		filename = malloc(strlen(argv[1]));
-		strcpy(filename, argv[1]);
-	}
-	else
-	{
-		filename = malloc(sizeof(DEFAULT_FILENAME));
-		strcpy(filename, DEFAULT_FILENAME);
-	}
-	
-    setlocale(LC_ALL, "en_US.UTF-8");
-	initscr();
-
-	//writespecificline(10, "1 argument passed");
-	//char filename = malloc(sizeof(argv[1]));
-	//strcpy(&argv[1], &filename);
-	//printf("%s", &argv[1]);
-	int returnval = edit(filename);
-	endwin();
-	return returnval;
-	
-
-	/*initscr();
-
-	writespecificline(0, "Welcome to the Pint text editor.");
-
-	int sizeX = 0;
-	int sizeY = 0;
-
-	char sizechar[16];
-
-	getsize(&sizeX, &sizeY);
-
-	sprintf(sizechar, "%d %s %d", sizeX, "x", sizeY);
-
-	writespecificline(2, "terminal size:");
-	writespecificline(3, sizechar);
-	writespecificline(5, "press enter to continue...");
-
-	refresh();
-
-	getch();*/
-
-	endwin();
+        filename = malloc(strlen(argv[1]));
+        strcpy(filename, argv[1]);
+    }
+    else
+    {
+        filename = malloc(sizeof(DEFAULT_FILENAME));
+        strcpy(filename, DEFAULT_FILENAME);
+    }
+        
+    initscr();
+    
+    //writespecificline(10, "1 argument passed");
+    //char filename = malloc(sizeof(argv[1]));
+    //strcpy(&argv[1], &filename);
+    //printf("%s", &argv[1]);
+    int returnval = edit(filename);
+    endwin();
+    return returnval;
+    
+    
+    /*initscr();
+    
+    writespecificline(0, "Welcome to the Pint text editor.");
+    
+    int sizeX = 0;
+    int sizeY = 0;
+    
+    char sizechar[16];
+    
+    getsize(&sizeX, &sizeY);
+    
+    sprintf(sizechar, "%d %s %d", sizeX, "x", sizeY);
+    
+    writespecificline(2, "terminal size:");
+    writespecificline(3, sizechar);
+    writespecificline(5, "press enter to continue...");
+    
+    refresh();
+    
+    getch();*/
+    
+    endwin();
 }
 
 int edit(char filename1[]) {
-	if (start_color() != OK)
-	{
-		printf("Couldn't start color.");
-		return 2;
-	}
-
-	filename = malloc(strlen(filename1));
-	strcpy(filename, filename1);
-
-	clear();
-	noecho();
-	cbreak();
-
-	int sizeX = 0;
-	int sizeY = 0;
-
-	//https://stackoverflow.com/questions/7978315/ctrl-c-eaten-by-getchar
-	//struct sigaction sa;
-	//memset(&sa, 0, sizeof(struct sigaction));
-	//sa.sa_handler = sigHandler;
-	//sa.sa_flags = 0;// not SA_RESTART!;
-
-	//sigaction(SIGINT, &sa, NULL);
-	//sigaction(SIGTERM, &sa, NULL);
-
-	getsize(&sizeX, &sizeY);
-
-	//printf("%d", sizeY);
-
-	FILE * file = fopen(filename1, "r");
-	if (file == NULL)
-	{
-		/*file = fopen(filename1, "w+");
-		if (file == NULL)
-		{
-			printf("Unable to open or create the file %s\n", filename1);
-			return 1;
-		}*/
-		//printf("no file...");
-		//return 1;
-	}
-	else
+    if (start_color() != OK)
     {
-        fclose(file);
+        printf("Couldn't start color.");
+        return 2;
     }
     
-    //char *topmessage = malloc(strlen(TMPREFIX) + strlen(filename1));
+    filename = malloc(strlen(filename1));
+    strcpy(filename, filename1);
     
-    //strcpy(topmessage, TMPREFIX);
-    //strcat(topmessage, filename1);
+    clear();
+    noecho();
+    cbreak();
     
-    char *tmchars = malloc(strlen(TMPREFIX) + strlen(filename));
-    strncpy(tmchars, TMPREFIX, strlen(TMPREFIX));
-    strncat(tmchars, filename, strlen(filename1));
+    int sizeX = 0;
+    int sizeY = 0;
+    
+    //https://stackoverflow.com/questions/7978315/ctrl-c-eaten-by-getchar
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = sigHandler;
+    sa.sa_flags = 0;// not SA_RESTART!;
 
-    pstring topmessage = pstr_new_from_chars(tmchars, strlen(TMPREFIX) + strlen(filename));
+    //sigaction(SIGINT, &sa, NULL);
+    //sigaction(SIGTERM, &sa, NULL);
+    
+    getsize(&sizeX, &sizeY);
+    
+    //printf("%d", sizeY);
+    
+    FILE * file = fopen(filename1, "r");
+    if (file == NULL)
+    {
+        file = fopen(filename1, "w+");
+        if (file == NULL)
+        {
+            printf("Unable to open or create the file %s\n", filename1);
+            return 1;
+        }
+        //printf("no file...");
+        //return 1;
+    }
+    
+    char* currentline;
+    long currentread;
+    long len = 0;
+    
+    long linenumber = 0;
+    
+    rows = malloc(countLines(filename1) * sizeof(editorRow));
+    //printf(" %d ", countlines(filename1));
+    
+    while ((currentread = getline(&currentline, &len, file)) != -1)
+    {
+        //rows[linenumber].chars = malloc(strlen(currentline));
+        //currentline = realloc(currentline, strlen(currentline) + 1);
+        //strncat(currentline, '\0', 1);
+        //char * currentline2 = malloc(strlen(currentline) + 1);
+        //strcpy(currentline2, currentline);
+        //currentline2[strlen(currentline2) - 1] = '\0';
+        //currentline[strlen(currentline) - 1] = '\0';
+        //strcpy(rows[linenumber].chars, currentline);
+        long newlen = strlen(currentline) - 1;
+        currentline[newlen] = '\0';
+        insertrow(linenumber, currentline, newlen);
+        //free(currentline2);
+        linenumber = linenumber + 1;
+        //numberOfRows++;
+    }
+    if (numberOfRows == 0)
+    {
+        insertrow(0, "", 0);
+    }
+    fclose(file);
+    free(currentline);
+    /*rows = malloc(countlines(filename) * sizeof(editorRow));
+    fileLine *lines;
+    openFile(filename, lines);
+    long numberOfRows1 = countlines(filename);
+    if (numberOfRows1 == -1)
+    {
+        printf("error opening file.");
+        return 1;
+    }
+    int i = 0;
+    while (i < numberOfRows1)
+    {
+        insertrow(i, lines[i].chars);
+
+        i++;
+    }*/
+    //return;
+    
+    //insertrow(linenumber, "");
+    
+    //insertrow(11, "new w 3");
+    //removerow(11);
+    //insertchar(2, 0, 'n');
+    //insertchar(2, 5, 'r');
+    //insertchar(2, 6, 'o');
+    
+    long i = 0;
+    //i = 0;
+
+    /*while (i + 3 < sizeY, i < numberOfRows)
+    {
+        //writespecificline(i + 1, rows[i].chars);
+        //insertrow(i, rows[i].chars);
+        drawlinenocopy(i, 0);
+        i = i + 1;
+    }*/
+    drawrows();
+    
+    char *topmessage = malloc(strlen(TMPREFIX) + strlen(filename1));
+    
+    strcpy(topmessage, TMPREFIX);
+    strcat(topmessage, filename1);
+    
     writespecificlinewithcolor(0, topmessage, COLOR_BLACK, COLOR_WHITE);
-    //free(topmessage.chars);
-    //free(topmessage);
-    free(tmchars);
+    free(topmessage);
     
     char *bottom1 = malloc(sizeX);
     
     strcpy(bottom1, "^X: Quit    ^W: Write");
-    long i = strlen(bottom1);
+    i = strlen(bottom1);
     while (i < sizeX)
     {
         //strncat(bottom1, , 1);
@@ -190,49 +265,15 @@ int edit(char filename1[]) {
 
     bottom2[sizeX] = '\0';*/
     
-    pstring bottom1p = pstr_new_from_chars(bottom1, strlen(bottom1));
-
-    writespecificline(sizeY - 2, bottom1p);
+    //writespecificlinewithcolor(sizeY - 2, bottom1, COLOR_WHITE, COLOR_BLACK);
+    writespecificline(sizeY - 2, bottom1);
+    //writespecificlinewithcolor(sizeY - 1, bottom2, COLOR_BLACK, COLOR_WHITE);
     free(bottom1);
     writespecificcharswithcolor(sizeY - 2, 0, "^X", COLOR_BLACK, COLOR_WHITE);
     writespecificcharswithcolor(sizeY - 2, 12, "^W", COLOR_BLACK, COLOR_WHITE);
+    //free(bottom2);
     
-    rows = malloc(0);
-    
-    int numberOfRows1 = countLines(filename1);
-    pstring * filelines = malloc(numberOfRows1 * sizeof(pstring));
-    filelines = openFile(filename);
-    
-    //long i = 0;
-    i = 0;
-    while (i < numberOfRows1)
-    {
-        insertrow(i, filelines[i]);
-        i++;
-    }
-
-    if (countLines(filename1) < 1)
-    {
-        /*pstring tmp;
-        tmp.chars = malloc(1);
-        strncpy(tmp.chars, "\0", 1);
-        tmp.len = 0;*/
-        pstring tmp = pstr_new();
-        insertrow(0, tmp);
-        fprintf(stderr, "169");
-    }
-    
-    i = 0;
-    //i = 0;
-
-    /*while (i + 3 < sizeY, i < numberOfRows)
-    {
-        //writespecificline(i + 1, rows[i].chars);
-        //insertrow(i, rows[i].chars);
-        drawlinenocopy(i, 0);
-        i = i + 1;
-    }*/
-    drawrows();
+    //intrflush(stdscr, false);
     
     keypad(stdscr, true);
     
@@ -270,27 +311,18 @@ int edit(char filename1[]) {
         if (result == 1)
         {
             //save();
-            stdmessage(sizeY, sizeX, "Do you want to save? (y)es/(n)o/(c)ancel\0");
+            stdmessage(sizeY, sizeX, "Do you want to save? (y)es/(n)o/(c)ancel");
             refresh();
             int ch = getchar();
             if (ch == 'y')
             {
-                int result = save();
-                if (result == 0)
+                if (save() == 0)
                 {
                     return 0;
                 }
                 else
                 {
-                    if (result == EACCES)
-                    {
-                        stdmessage(sizeY, sizeX, "Failed to save: permission denied.\0");
-                    }
-                    else
-                    {
-                        stdmessage(sizeY, sizeX, "Failed to save.\0");
-                    }
-                    refresh();
+                    stdmessage(sizeY, sizeX, "Failed to save.");
                 }
             }
             else if (ch == 'n')
@@ -317,7 +349,7 @@ int edit(char filename1[]) {
                 move(y, x);
                 refresh();
                 
-                stdmessage(sizeY, sizeX, "Invalid input. Not closing.\0");
+                stdmessage(sizeY, sizeX, "Invalid input. Not closing.");
                 refresh();
                 getchar();
             }
@@ -331,55 +363,83 @@ int edit(char filename1[]) {
         //getch();
         //printf("%d ", ch);
     }
-	/*while (true)
-	{
-		printf("%d ", getchar());
-	}*/
+    /*while (true)
+    {
+        printf("%d ", getchar());
+    }*/
     
     //free(rows);
 }
 
 int save()
 {
-    pstring *lines = malloc(numberOfRows * sizeof(pstring));
+    /*char filename1[strlen(filename)];
+    strcpy(filename1, filename);
+    
+    FILE *file = fopen(filename1, "w");
+    if (file)
+    {
+        int i = 0;
+        while (i < numberOfRows)
+        {
+            //char tmp[rows[i].length];
+            char *tmp = malloc(rows[i].reallength + 2);
+            strncpy(tmp, rows[i].chars, rows[i].reallength);
+            tmp[rows[i].reallength] = '\n';
+            tmp[rows[i].reallength + 1] = '\0';
+            //fputs(rows[i].chars, file);
+            fputs(tmp, file);
+            free(tmp);
+            //fputs('\n', file);
+            
+            //printf("adding line");
+            
+            i++;
+        }
+        
+        //file.close();
+        fclose(file);
+        
+        //endwin();
+    }
+    else
+    {
+        int sizeY, sizeX;
+        getsize(&sizeX, &sizeY);
+        //fprintf(stderr, "%s %s", "failed to save: ", filename1);
+        stdmessage(sizeY, sizeX, "Failed to save.");
+        refresh();
+    }*/
+
+    fileLine *lines = malloc(numberOfRows * sizeof(fileLine));
     
     long i = 0;
     while (i < numberOfRows)
     {
-        lines[i] = rows[i].chars;
+        lines[i].chars = malloc(rows[i].reallength);
+        strncpy(lines[i].chars, rows[i].chars, rows[i].reallength);
+        lines[i].length = rows[i].reallength;
         i++;
     }
 
-    int result = writeFile(filename, lines, numberOfRows);
+    writeFile(filename, lines, numberOfRows);
     free(lines);
-    return result;
     //free(rowsChars);
     
     //free(file);
 }
 
-int stdmessage(int sizeY, int sizeX, char message[])
+int stdmessage(int sizeY, int sizeX, char *message)
 {
     int buffersize = (sizeX - strlen(message)) / 2;
 
-    int x,y;
-    getsize(&x, &y);
-    move(sizeY - 3, 0);
-    clrtoeol();
-    move(y, x);
-
     if (strlen(message) + 1 < sizeX)
     {
-        char output[strlen(message) + 3];
+        char *output = malloc(strlen(message) + 2);
         strncpy(output, "[", 1);
         strncat(output, message, strlen(message));
         strncat(output, "]", 1);
-        strncat(output, "\0", 1);
-        //pstring output = pstr_new_from_chars("[", 1);
-        //output = pstr_combine(output, pstr_new_from_chars(message, strlen(message)));
-        //output = pstr_combine(output, pstr_new_from_chars("]", 1));
         writespecificcharswithcolor(sizeY - 3, buffersize - 1, output, COLOR_BLACK, COLOR_WHITE);
-        //free(output);
     }
     else
     {
@@ -524,9 +584,9 @@ int processchar(int sizeY, int sizeX, long charin)
             {
                 actualX--;
             }*/
-            if (rows[y - 1 + verticalOffset].chars.chars[calculatearraypos(y - 1 + verticalOffset, actualX) - 1] == '\t')
+            if (rows[y - 1 + verticalOffset].chars[calculatearraypos(y - 1 + verticalOffset, actualX) - 1] == '\t')
             {
-                actualX -= calculatetabwidth(calculatedisplaypos(y - 1 + verticalOffset, calculatearraypos(y - 1 + verticalOffset, actualX) - 1));//, false);
+                actualX -= calculatetabwidth(y - 1 + verticalOffset, calculatedisplaypos(y - 1 + verticalOffset, calculatearraypos(y - 1 + verticalOffset, actualX) - 1));//, false);
             }
             else
             {
@@ -569,7 +629,7 @@ int processchar(int sizeY, int sizeX, long charin)
         getyx(stdscr, y, x);
         //fprintf(stderr, "display width: %d\n", rows[y - 1  + verticalOffset].displaylength);
         
-        if (actualX >= rows[y - 1 + verticalOffset].displaylength)//strlen(rows[y - 1].chars))
+        if (actualX == rows[y - 1 + verticalOffset].displaylength)//strlen(rows[y - 1].chars))
         {
             if (y + verticalOffset >= numberOfRows || y >= sizeY - 3)
             {
@@ -636,15 +696,13 @@ int processchar(int sizeY, int sizeX, long charin)
                 }
             }*/
             long i = calculatearraypos(y - 1 + verticalOffset, actualX);
-            if (rows[y - 1 + verticalOffset].chars.chars[i] == '\t')
+            if (rows[y - 1 + verticalOffset].chars[i] == '\t')
             {
-                actualX += calculatetabwidth(actualX);//, false);
+                actualX += calculatetabwidth(y - 1 + verticalOffset, actualX);//, false);
             }
             else
             {
                 actualX++;
-                //actualX += utf8len(&rows[y - 1 + verticalOffset].chars.chars[i]);
-                //actualX = calculatedisplaypos(y - 1 + verticalOffset, i);
             }
             rowOffset = calculateoffset(y - 1 + verticalOffset, true);
             move(y, actualX - rowOffset);
@@ -673,23 +731,21 @@ int processchar(int sizeY, int sizeX, long charin)
     {
         int y,x;
         getyx(stdscr, y, x);
-        long row = y - 1 + verticalOffset;
+        long tmpint = rows[y - 1 + verticalOffset].displaylength - actualX + 1;
         
-        long tmpint = rows[row].chars.len - calculatearraypos(row, actualX) + 1;
-        
-        if (y + verticalOffset >= numberOfRows)
-        {
-            return 0;
-        }
+        //if (y + verticalOffset >= numberOfRows)
+        //{
+        //    return 0;
+        //}
         
         long xRequestCache = xRequest;
         if (xRequest > rows[y + verticalOffset].displaylength)
         {
-            tmpint += rows[y + verticalOffset].chars.len;
+            tmpint += rows[y + verticalOffset].displaylength;
         }
         else
         {
-            tmpint += calculatearraypos(y + verticalOffset, xRequest);
+            tmpint += xRequest;
         }
         
         while (tmpint > 0)
@@ -712,7 +768,7 @@ int processchar(int sizeY, int sizeX, long charin)
         
         int y,x;
         getyx(stdscr, y, x);
-        long tmpint = calculatearraypos(y - 1 + verticalOffset, actualX) + 1; // -1?
+        long tmpint = actualX + 1; // -1?
         
         long xRequestCache = xRequest;
         
@@ -726,7 +782,7 @@ int processchar(int sizeY, int sizeX, long charin)
             if (xRequest < rows[y - 2 + verticalOffset].displaylength)
             {
                 //tmpint += rows[y - 2].length;
-                tmpint += rows[y - 2 + verticalOffset].chars.len - calculatearraypos(y - 2 + verticalOffset, xRequest);
+                tmpint += rows[y - 2 + verticalOffset].displaylength - xRequest;
             }
             else
             {
@@ -778,15 +834,13 @@ int processchar(int sizeY, int sizeX, long charin)
         
         long arrayPos = calculatearraypos(y - 1 + verticalOffset, actualX);
 
-        //insertrow(y + verticalOffset, rows[y - 1 + verticalOffset].chars+arrayPos, rows[y - 1 + verticalOffset].reallength - arrayPos);
-        insertrow(y + verticalOffset, pstr_start_at(rows[y - 1 + verticalOffset].chars, arrayPos));
+        insertrow(y + verticalOffset, rows[y - 1 + verticalOffset].chars+arrayPos, rows[y - 1 + verticalOffset].reallength - arrayPos);
 
-        //char remainingChars[arrayPos];// = malloc(arrayPos);//rows[y - 1].reallength - arrayPos);
-        //strncpy(remainingChars, rows[y - 1 + verticalOffset].chars, arrayPos);
-        pstring remainingChars = pstr_first_n(rows[y - 1 + verticalOffset].chars, arrayPos);
+        char remainingChars[arrayPos];// = malloc(arrayPos);//rows[y - 1].reallength - arrayPos);
+        strncpy(remainingChars, rows[y - 1 + verticalOffset].chars, arrayPos);
         removerow(y - 1 + verticalOffset);
         
-        insertrow(y - 1 + verticalOffset, remainingChars);
+        insertrow(y - 1 + verticalOffset, remainingChars, arrayPos);
         //rows[y - 1 + verticalOffset].displaylength = calculatedisplaylength(y - 1 + verticalOffset);
 
         long i = y - 1 + verticalOffset;
@@ -829,7 +883,7 @@ int processchar(int sizeY, int sizeX, long charin)
         //printf("isalnum");
         int y,x;
         getyx(stdscr, y, x);
-        char newchar = charin;//malloc(1);
+        char *newchar = charin;//malloc(1);
         //newchar = charin;
         insertchar(y - 1 + verticalOffset, x + rowOffset, newchar);
         //free(newchar);
@@ -871,21 +925,48 @@ int processchar(int sizeY, int sizeX, long charin)
             
             long nextActualX = rows[y - 1 + verticalOffset].displaylength; //strlen(rows[y - 1].chars);
             
-            pstring newrow = pstr_combine(rows[y - 2 + verticalOffset].chars, rows[y - 1 + verticalOffset].chars);
+            //char *tmp;
+            long tmplen = rows[y - 2 + verticalOffset].reallength + rows[y - 1 + verticalOffset].reallength;
+            char *tmp = malloc(tmplen); //malloc(strlen(rows[y - 2].chars) + strlen(rows[y - 1].chars) + 1);
             
-            removerow(y - 1 + verticalOffset);
-            rows[y - 2 + verticalOffset].chars = newrow;
+            strncpy(tmp, rows[y - 2 + verticalOffset].chars, rows[y - 2 + verticalOffset].reallength);
+            strncat(tmp, rows[y - 1 + verticalOffset].chars, rows[y - 1 + verticalOffset].reallength);
+            
+            //free(rows[y - 2 + verticalOffset].chars);
+            //rows[y - 2 + verticalOffset].chars = malloc(tmplen);//strlen(tmp));
+            rows[y - 2 + verticalOffset].chars = realloc(rows[y - 2 + verticalOffset].chars, tmplen * sizeof(char));
+            strncpy(rows[y - 2 + verticalOffset].chars, tmp, tmplen);
+            rows[y - 2 + verticalOffset].reallength = tmplen;
             rows[y - 2 + verticalOffset].displaylength = calculatedisplaylength(y - 2 + verticalOffset);
+
+            removerow(y - 1 + verticalOffset);
             
             long i = 0;
             long actualXCache = actualX;
             actualX = 0;
+            /*while (i + verticalOffset < numberOfRows && i < sizeY - 3)
+            {
+                move(i + 1, 0);
+                if (i == y - 2 + verticalOffset)
+                {
+                    actualX = actualXCache;
+                    drawlinenocopy(i + verticalOffset, 0);//calculateoffset(y - 2, false));
+                    actualX = 0;
+                }
+                else
+                {
+                    drawlinenocopy(i + verticalOffset, 0);
+                }
+                
+                i++;
+            }*/
             
             move(numberOfRows + 1 - verticalOffset, 0);
             clrtoeol();
             
             move(y, 0);
             
+            //actualX = actualXCache;
             actualX = 0;
             xRequest = actualX;
             i = 0;
@@ -904,6 +985,7 @@ int processchar(int sizeY, int sizeX, long charin)
             int y,x;
             getyx(stdscr, y, x);
             deletechar(y - 1 + verticalOffset, x);
+            //drawlinenocopy(y - 1, calculateoffset(y - 1, false));
             processchar(sizeY, sizeX, 277968);
         }
         // move cursor
@@ -920,13 +1002,13 @@ int processchar(int sizeY, int sizeX, long charin)
 
 int calculatedisplaylength(long row)
 {
-    /*long i = 0;//rows[row].reallength - 1;
+    long i = 0;//rows[row].reallength - 1;
     long newlen = 0;
-    while (i < rows[row].chars.len)
+    while (i < rows[row].reallength)
     {
-        if (rows[row].chars.chars[i] == '\t')
+        if (rows[row].chars[i] == '\t')
         {
-            newlen += calculatetabwidth(newlen);//, false);//i, true);
+            newlen += calculatetabwidth(row, newlen);//, false);//i, true);
         }
         else
         {
@@ -936,8 +1018,7 @@ int calculatedisplaylength(long row)
         i++;
     }
 
-    return newlen;*/
-    return calculatedisplaypos(row, rows[row].chars.len - 1);
+    return newlen;
 }
 
 int drawrows()
@@ -1026,9 +1107,8 @@ int drawlinenocopy(long row, long offset)
     //char *text = malloc(rows[row].length);//malloc(strlen(rows[row].chars));
     //fprintf(stderr, "row %d reallen: %d\n", row, rows[row].reallength);
     //char *text = calloc(1, rows[row].reallength * sizeof(char));
-    //char text[rows[row].reallength];
-    //strncpy(text, rows[row].chars, rows[row].reallength);
-    pstring tmp = rows[row].chars;
+    char text[rows[row].reallength];
+    strncpy(text, rows[row].chars, rows[row].reallength);
     //text[rows[row].reallength - 1] = '\0';
     /*if (actualX < sizeX)
     {
@@ -1039,26 +1119,29 @@ int drawlinenocopy(long row, long offset)
         drawline(row, text, actualX - x);
     }*/
     //drawline(row, text, offset, rows[row].length);
-    drawline(row, tmp, offset);
+    drawline(row, text, offset, rows[row].reallength);
     //free(text);
 }
 
-int drawline(long row, pstring line, long offset)
+int drawline(long row, char *line, long offset, long linelen)
 {
     //free(rows[row].chars);
     //rows[row].chars = malloc(linelen);//strlen(line));
-    //rows[row].chars = realloc(rows[row].chars, linelen * sizeof(char));
-    rows[row].chars = line;
+    rows[row].chars = realloc(rows[row].chars, linelen * sizeof(char));
     if (row >= numberOfRows)
     {
         fprintf(stderr, "out of range in drawline");
         //return 1;
     }
-    //strncpy(rows[row].chars, line, linelen);
-    //rows[row].reallength = linelen;//strlen(line);
+    strncpy(rows[row].chars, line, linelen);
+    rows[row].reallength = linelen;//strlen(line);
     rows[row].displaylength = calculatedisplaylength(row);
 
-    pstring text = pstr_get_terminated(rows[row].chars);
+    //char text[linelen + 1];
+    //fprintf(stderr, "linelen: %d\n", linelen);
+    char *text = malloc(linelen);
+    strncpy(text, rows[row].chars, rows[row].reallength);
+    text[linelen] = '\0';
     
     int sizeY, sizeX;
     getsize(&sizeX, &sizeY);
@@ -1068,13 +1151,15 @@ int drawline(long row, pstring line, long offset)
         return 1;
     }
 
-    if (text.len - 1 < sizeX) // the -1 is because of the \0 at the end (from the pstr_get_terminated() above)
+    if (linelen < sizeX)//strlen(line) < sizeX)
     {
         writespecificline(row + 1 - verticalOffset, text);
     }
     else
     {
-        pstring tmp = pstr_start_at(text, offset);
+        char *tmp = malloc(sizeX);
+        
+        strncpy(tmp, text+offset, sizeX);
         
         writespecificline(row + 1 - verticalOffset, tmp);
         
@@ -1083,13 +1168,13 @@ int drawline(long row, pstring line, long offset)
             //tmp[0] = '<';
             writespecificcharswithcolor(row + 1 - verticalOffset, 0, "<", COLOR_BLACK, COLOR_WHITE);
         }
-        if (offset + sizeX < rows[row].chars.len)//strlen(rows[row].chars))
+        if (offset + sizeX < rows[row].reallength)//strlen(rows[row].chars))
         {
             //tmp[sizeX - 1] = '>';
             writespecificcharswithcolor(row + 1 - verticalOffset, sizeX - 1, ">", COLOR_BLACK, COLOR_WHITE);
         }
         
-        //free(tmp);
+        free(tmp);
     }
     // implement scrolling in the future
 }
@@ -1119,7 +1204,7 @@ int drawline(long row, pstring line, long offset)
   return lines;
 }*/
 
-int insertrow(long insertbeforeindex, pstring row)//, char * rows2)
+int insertrow(long insertbeforeindex, char row[], long rowlen)//, char * rows2)
 {
     expandrows();
     
@@ -1133,14 +1218,11 @@ int insertrow(long insertbeforeindex, pstring row)//, char * rows2)
         //printf("%s %d", "i=", i);
         //free(rows[i].chars);
         //rows[i].chars = malloc(rows[i - 1].reallength);//malloc(strlen(rows[i - 1].chars));
-        //rows[i].chars = realloc(rows[i].chars, rows[i - 1].reallength * sizeof(char));
-        //rows[i].reallength = rows[i - 1].reallength;
-        //rows[i].displaylength = rows[i - 1].displaylength;
-        //strncpy(rows[i].chars, rows[i - 1].chars, rows[i - 1].reallength);//strlen(rows[i - 1].chars));
-        
-        rows[i].chars = rows[i - 1].chars;
+        rows[i].chars = realloc(rows[i].chars, rows[i - 1].reallength * sizeof(char));
+        rows[i].reallength = rows[i - 1].reallength;
         rows[i].displaylength = rows[i - 1].displaylength;
-
+        strncpy(rows[i].chars, rows[i - 1].chars, rows[i - 1].reallength);//strlen(rows[i - 1].chars));
+        
         i--;
     }
     //memmove(rows[insertbeforeindex + 1].chars, rows[insertbeforeindex].chars, (numberOfRows - insertbeforeindex - 1) * sizeof(char*));
@@ -1148,10 +1230,9 @@ int insertrow(long insertbeforeindex, pstring row)//, char * rows2)
 
     //free(rows[insertbeforeindex].chars);
     //free(rows[insertbeforeindex].chars);
-    //rows[insertbeforeindex].chars = malloc(rowlen);//strlen(row));
-    //rows[insertbeforeindex].reallength = rowlen;//strlen(row);
-    //strncpy(rows[insertbeforeindex].chars, row, rowlen);//strlen(row));
-    rows[insertbeforeindex].chars = row;
+    rows[insertbeforeindex].chars = malloc(rowlen);//strlen(row));
+    rows[insertbeforeindex].reallength = rowlen;//strlen(row);
+    strncpy(rows[insertbeforeindex].chars, row, rowlen);//strlen(row));
     rows[insertbeforeindex].displaylength = calculatedisplaylength(insertbeforeindex);
 }
 int expandrows()
@@ -1209,15 +1290,23 @@ int removerow(long index)
     
     while (i < index)
     {
-        tmp[i].chars = rows[i].chars;
+        //printf("%s", rows[i].chars);
+        tmp[i].chars = malloc(rows[i].reallength);//malloc(strlen(rows[i].chars));
+        tmp[i].reallength = rows[i].reallength;
         tmp[i].displaylength = rows[i].displaylength;
+        strncpy(tmp[i].chars, rows[i].chars, rows[i].reallength);//strlen(rows[i].chars));
+        //printf("%s", tmp[i].chars);
         i++;
     }
     i++;
     while (i < numberOfRows)
     {
-        tmp[i - 1].chars = rows[i].chars;
+        //printf("%s", rows[i].chars);
+        tmp[i - 1].chars = malloc(rows[i].reallength);//malloc(strlen(rows[i].chars));
+        tmp[i - 1].reallength = rows[i].reallength;
         tmp[i - 1].displaylength = rows[i].displaylength;
+        strncpy(tmp[i - 1].chars, rows[i].chars, rows[i].reallength);//strlen(rows[i].chars));
+        //printf("%s", tmp[i].chars);
         i++;
     }
     
@@ -1229,8 +1318,12 @@ int removerow(long index)
     
     while (i < numberOfRows - 1)
     {
-        rows[i].chars = tmp[i].chars;
+        //printf("%s", tmp[i].chars);
+        rows[i].chars = malloc(tmp[i].reallength);//malloc(strlen(tmp[i].chars));
+        rows[i].reallength = tmp[i].reallength;
         rows[i].displaylength = tmp[i].displaylength;
+        strncpy(rows[i].chars, tmp[i].chars, tmp[i].reallength);//strlen(tmp[i].chars));
+        //printf("%s", rows[i].chars);
         i++;
     }
     
@@ -1252,14 +1345,13 @@ int calculatedisplaypos(long row, long arrayindex)
             i = 0;
             break;
         }
-        if (rows[row].chars.chars[i] == '\t')
+        if (rows[row].chars[i] == '\t')
         {
-            //newlen += 8 - newlen % 8;//(i + 8) / 8 * 8 - i;
-            newlen += 8 - newlen % 8 - 1;
+            newlen += 8 - newlen % 8;//(i + 8) / 8 * 8 - i;
         }
         else
         {
-            //newlen++;
+            newlen++;
         }
 
         i++;
@@ -1273,7 +1365,6 @@ int calculatedisplaypos(long row, long arrayindex)
         }*/
     }
 
-    newlen += utf8len(pstr_get_terminated(rows[row].chars).chars);
     return(newlen);
 }
 
@@ -1281,22 +1372,20 @@ int calculatearraypos(long row, long index)
 {
     long i = 0;//rows[row].reallength - 1;
     long newlen = 0;
-    while (i < rows[row].chars.len)
+    while (i < rows[row].reallength)
     {
         if (index == 0)
         {
             i = 0;
             break;
         }
-        if (rows[row].chars.chars[i] == '\t')
+        if (rows[row].chars[i] == '\t')
         {
-            //newlen += 8 - newlen % 8;//(i + 8) / 8 * 8 - i;
-            newlen += 8 - newlen % 8;
+            newlen += 8 - newlen % 8;//(i + 8) / 8 * 8 - i;
         }
         else
         {
-            newlen += utf8len(&rows[row].chars.chars[i]);
-            //newlen++;
+            newlen++;
         }
 
         i++;
@@ -1313,25 +1402,287 @@ int calculatearraypos(long row, long index)
     return(i);
 }
 
-int calculatetabwidth(long index)//, bool realpos)
+int calculatetabwidth(long row, long index)//, bool realpos)
 {
-    return 8 - index % 8;
+    long i = 0;//rows[row].reallength - 1;
+    long newlen = 0;
+    //if (realpos)
+    //{
+        /*while (i < rows[row].reallength)
+        {
+            if (index == 0)
+            {
+                i = 0;
+                break;
+            }
+            if (rows[row].chars[i] == '\t')
+            {
+                newlen += (i + 8) / 8 * 8 - i;
+            }
+            else
+            {
+                newlen++;
+            }
+
+            i++;
+            if (newlen >= index)
+            {
+                if (newlen > index)
+                {
+                    fprintf(stderr, "1172 error");
+                }
+                break;
+            }
+        }*/
+        //i = calculatearraypos(row, index);
+    //}
+    /*else
+    {
+        i = index;
+    }*/
+    
+    i = index;
+
+    //int nexttabstop = (i + 8) / 8 * 8;
+    /*if ((i / 8) * 8 != i && nexttabstop == 8)
+    {
+        nexttabstop = 0;
+    }*/
+    //return nexttabstop - i;
+    /*fprintf(stderr, "\norig index value: %d\n", index);
+    fprintf(stderr, "i value: %d\n", i);
+    fprintf(stderr, "row display size: %d\n", rows[row].displaylength);
+    fprintf(stderr, "tab return: %d\n\n", 8 - i % 8);*/
+    return 8 - i % 8;
 }
 
-int insertchar(long row, long insertbeforeindex, char insertchar)
+int insertchar(long row, long insertbeforeindex, char *insertchar)//, char * rows2)
 {
-    rows[row].chars = pstr_insert_char(rows[row].chars, insertchar, calculatearraypos(row, insertbeforeindex));
+    expandrow(row);
+    
+    /*//https://stackoverflow.com/questions/4761764/how-to-remove-first-three-characters-from-string-with-c
+    
+    if (insertbeforeindex == 0)
+    {
+        //char *buf = malloc(strlen(rows[row].chars) + 1);
+        char buf[strlen(rows[row].chars)];
+        
+        strncpy(buf, &insertchar, strlen(rows[row].chars)); // copy all of insert[] at the end
+        strcat(buf, rows[row].chars); // copy the rest
+        //buf[strlen(buf) - 1] = '\0';
+        rows[row].chars = malloc(strlen(buf));
+        strncpy(rows[row].chars, buf, strlen(buf)); 
+        //free(buf);
+    }
+    else
+    {
+        //char *buf = malloc(strlen(rows[row].chars) + 1);
+        char buf[strlen(rows[row].chars)];
+        //memset(buf, 0, 100);
+        
+        strncpy(buf, rows[row].chars, insertbeforeindex); // copy at most first pos characters
+        //strcat(buf, &insertchar); // copy all of insert[] at the end
+        fprintf(stderr, "current row text: %s \n", rows[row].chars);
+        fprintf(stderr, "insertchar: %s \n \n", &insertchar);
+        buf[insertbeforeindex] = insertchar;
+        //if (strlen(rows[row].chars) - 1 <= insertbeforeindex)
+        if (false)
+        {
+            
+        }
+        else
+        {
+            char * rest = malloc(strlen(rows[row].chars+insertbeforeindex));
+            strcpy(rest, rows[row].chars+insertbeforeindex);
+            buf[insertbeforeindex + 1] = NULL;
+            strcat(buf, rest); // copy the rest
+            free(rest);
+        }
+        //buf[strlen(buf) - 1] = '\0';
+        rows[row].chars = realloc(rows[row].chars, strlen(buf));
+        strncpy(rows[row].chars, buf, strlen(buf));   // copy it back to subject
+        // Note that subject[] must be big enough, or else segfault.
+        // deallocate buf[] here, if used malloc()
+        // e.g. free(buf);
+        //free(buf);
+    }*/
+    /*const char *source = rows[row].chars;
+
+    // find length of the source string
+    int source_len = strlen(source);
+
+    // find length of the new string
+    int result_len = source_len + 2; // 2 quotation marks
+
+    // allocate memory for the new string (including null-terminator) 
+    char *result = malloc((result_len + 1) * sizeof(char));
+
+    // write and verify the string 
+    if (sprintf(result, "\"%s\"", source) != result_len) { /* handle error *//* }
+    rows[row].chars = result;
+    free(source);*/
+    //char *tmp = malloc(strlen(rows[row].chars));
+    //strcpy(tmp, rows[row].chars);
+    //insert_char_realloc(tmp, strlen(tmp), 'd', insertbeforeindex);
+    //rows[row].chars = malloc(strlen(tmp));
+    //strcpy(rows[row].chars, tmp);
+    //free(tmp);
+    //int realinsertbeforeindex;
+    long i = 0;//rows[row].reallength - 1;
+    long newlen = 0;
+    /*while (i < rows[row].reallength)
+    {
+        if (insertbeforeindex == 0)
+        {
+            i = 0;
+            break;
+        }
+        if (rows[row].chars[i] == '\t')
+        {
+            newlen += calculatetabwidth(row, i, true);
+        }
+        else
+        {
+            newlen++;
+        }
+
+        i++;
+        if (newlen >= insertbeforeindex)
+        {
+            if (newlen > insertbeforeindex)
+            {
+                fprintf(stderr, "1276 error");
+            }
+            break;
+        }
+    }*/
+    i = calculatearraypos(row, insertbeforeindex);
+
+    //char *tmp = insert_char_malloc(rows[row].chars, rows[row].reallength/*strlen(rows[row].chars)*/, insertchar, insertbeforeindex);
+    char *tmp = insert_char_malloc(rows[row].chars, rows[row].reallength/*strlen(rows[row].chars)*/, insertchar, i);
+    //rows[row].length = rows[row].length + 1;//strlen(tmp);
+    //free(rows[row].chars);
+    //rows[row].chars = malloc(rows[row].reallength);//malloc(strlen(tmp));
+    rows[row].chars = realloc(rows[row].chars, rows[row].reallength * sizeof(char));
+    //memcpy(rows[row].chars, tmp, rows[row].length);
+    strncpy(rows[row].chars, tmp, rows[row].reallength);
     rows[row].displaylength = calculatedisplaylength(row);
+    free(tmp);
+}
+
+/*char* insert_char_malloc (char *str, int len, char c, int pos)
+{
+    char *p;
+    int i;
+
+    p = malloc(len + 2);
+    for (i = 0 ; i < pos ; ++i)
+    p[i] = str[i];
+    p[i++] = c;
+    for ( ; i < len + 2 ; ++i)
+    p[i] = str[i - 1];
+    free(str);
+    return p;
+}*/
+
+char* insert_char_realloc (char *str, long len, char c, long pos)
+{
+    long i;
+
+    str = realloc(str, len + 2);
+    for (i = len + 1 ; i > pos ; --i)
+    str[i] = str[i - 1];
+    str[i] = c;
+    return str;
 }
 
 int deletechar(long row, long deleteindex)
 {
-    long i = calculatearraypos(row, deleteindex);
+    //deleteindex--;
+
+    long i = 0;//rows[row].reallength - 1;
+    long newlen = 0;
+    /*while (i < rows[row].reallength)
+    {
+        if (deleteindex == 0)
+        {
+            i = 0;
+            break;
+        }
+        if (rows[row].chars[i] == '\t')
+        {
+            newlen += calculatetabwidth(row, i, true);
+        }
+        else
+        {
+            newlen++;
+        }
+
+        i++;
+        if (newlen >= deleteindex)
+        {
+            break;
+        }
+    }*/
+    i = calculatearraypos(row, deleteindex);
 
     i--;
 
-    rows[row].chars = pstr_remove_char(rows[row].chars, deleteindex);
+    memmove(&rows[row].chars[i], &rows[row].chars[i + 1], rows[row].reallength - i);
+    //rows[row].chars = realloc(rows[row].chars, strlen(rows[row].chars) - 1);
+    newlen = rows[row].reallength - 1;
+    char *tmp = malloc(newlen);//malloc(strlen(rows[row].chars) - 1);
+    strncpy(tmp, rows[row].chars, newlen);//strlen(rows[row].chars) - 1);
+    //rows[row].chars = malloc(strlen(tmp));
+    //memcpy(rows[row].chars, tmp, strlen(tmp));
+    //free(rows[row].chars);
+    //rows[row].chars = malloc(newlen);
+    rows[row].chars = realloc(rows[row].chars, newlen * sizeof(char));
+    //rows[row].chars = tmp;
+    strncpy(rows[row].chars, tmp, newlen);
+    rows[row].reallength = newlen;
     rows[row].displaylength = calculatedisplaylength(row);
+    free(tmp);
+    //free(tmp);
+    /*char *tmp = malloc(strlen(rows[row].chars));
+    // = rows[row].chars;
+    strcpy(rows[row].chars, tmp);
+    //free(rows[row].chars);
+    rows[row].chars = malloc(strlen(rows[row].chars) - 1);
+    strncpy(rows[row].chars, tmp, deleteindex);
+    strcat(rows[row].chars, tmp+(deleteindex + 1));
+    free(tmp);*/
+}
+
+int expandrow(long row)
+{
+    //editorRow *newrow = malloc(sizeof(editorRow));
+    //char *newrow;
+    //newrow = malloc(strlen(rows[row].chars) + 1);
+    
+    //fprintf(stderr, "Row before expansion: %s\n", rows[row].chars);
+    
+    long newlen = rows[row].reallength + 1;
+    //char *newrow = malloc(newlen);//malloc((strlen(rows[row].chars)) + 1);
+    char newrow[newlen];
+
+    strncpy(newrow, rows[row].chars, newlen - 1);//strlen(rows[row].chars));
+    
+    //free(rows[row].chars);
+    //rows[row].chars = realloc(rows[row].chars, (rows[row].reallength + 1) * sizeof(char));
+    //rows[row].chars = newrow;
+    //rows[row].reallength = newlen;
+    rows[row].chars = malloc(newlen);
+    strncpy(rows[row].chars, newrow, newlen);
+    rows[row].reallength++;
+    rows[row].displaylength = calculatedisplaylength(row);
+    //rows[row].chars = malloc(strlen(newrow) + 1);
+    //rows[row] = newrow;
+    //newrow[strlen(newrow) - 1] = '\0';
+    //strncpy(rows[row].chars, newrow, strlen(newrow));
+    //strcat(rows[row].chars, ''
+    
+    //free(newrow);
 }
 
 int getsize(int *x, int *y) {
@@ -1339,25 +1690,24 @@ int getsize(int *x, int *y) {
     return 0;
 }
 
-void writespecificline(long line, pstring chars) {
+void writespecificline(long line, char *chars) {
+    //char *tmp = malloc(strlen(chars) + 1);
+    //tmp[strlen(chars)] = '\0';
     int y,x;
     getyx(stdscr, y, x);
     move(line, 0);
-    init_pair(2, COLOR_WHITE, COLOR_BLACK);
-    attrset(COLOR_PAIR(2));
     clrtoeol();
-    addstr(pstr_get_terminated(chars).chars);
-    attroff(COLOR_PAIR(2));
+    addstr(chars);
     move(y, x);
 }
-void writespecificlinewithcolor(long line, pstring chars, int textcolor, int backgroundcolor) {
+void writespecificlinewithcolor(long line, char *chars, int textcolor, int backgroundcolor) {
     int y,x;
     getyx(stdscr, y, x);
     init_pair(1, textcolor, backgroundcolor);
     attrset(COLOR_PAIR(1));
     move(line, 0);
     clrtoeol();
-    addstr(pstr_get_terminated(chars).chars);
+    addstr(chars);
     attroff(COLOR_PAIR(1));
     move(y, x);
 }
