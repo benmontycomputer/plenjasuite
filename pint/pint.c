@@ -569,7 +569,7 @@ int processchar(int sizeY, int sizeX, long charin)
         getyx(stdscr, y, x);
         //fprintf(stderr, "display width: %d\n", rows[y - 1  + verticalOffset].displaylength);
         
-        if (actualX == rows[y - 1 + verticalOffset].displaylength)//strlen(rows[y - 1].chars))
+        if (actualX >= rows[y - 1 + verticalOffset].displaylength)//strlen(rows[y - 1].chars))
         {
             if (y + verticalOffset >= numberOfRows || y >= sizeY - 3)
             {
