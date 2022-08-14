@@ -103,7 +103,14 @@ int main(int argc, char* argv[]) {
 		int pad = (w.ws_col - 14) / 2;
 		printf("%*.*s--- PLENKI ---\r\n", pad, pad, " ");
 
-		printf("%*.*squeue:%d,",pad,pad," ",3);
+		int qlen = 0;
+		for (int i=0; i<len; i++ ) {
+			if (strcmp(front[i],"")!=0) {
+				qlen++;
+			}
+		}
+
+		printf("%*.*squeue:%d,",pad,pad," ",qlen);
 		if (inverse) {
 			printf("inverted");
 		} else {
@@ -178,6 +185,7 @@ int main(int argc, char* argv[]) {
 
 					act=true;
 					pop=true;
+					flip=inverse;
 					break;
 				case 'r': //append l4 v1
 					
@@ -220,6 +228,7 @@ int main(int argc, char* argv[]) {
 
 					act=true;
 					pop=true;
+					flip=inverse;
 					break;
 				case 19: //control s save
 					system("/bin/stty cooked"); //immediate input off
@@ -270,6 +279,7 @@ int main(int argc, char* argv[]) {
 					
 					system("/bin/stty raw"); //immediate input on
 					act=true;
+					flip=inverse;
 					break;
 				case 'e': //edit
 					puts("\n\r");
@@ -336,9 +346,15 @@ int main(int argc, char* argv[]) {
 
 					}
 					act=true;
+					flip=inverse;
 					break;
 				case 'd':
 					pop=true;
+					act=true;
+					flip=inverse;
+					break;
+				case 'f':
+					inverse=!inverse;
 					act=true;
 					break;
 
