@@ -6,6 +6,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <sys/time.h>
 
 #define LIMIT 256 // limit for string
 #define ARR_LIMIT 0
@@ -245,8 +246,12 @@ int main(int argc, char* argv[]) {
 					break;
 				case 's': //shuffle:
 					char * sbuf = malloc(0);
-					for (int i=0; i<len; i++) {
-						int j = i + rand() / (RAND_MAX / (len - i) + 1);
+struct timeval tv;
+gettimeofday(&tv, NULL);
+int usec = tv.tv_usec;
+srand48(usec);
+					for (int i=len-1; i>0; i--) {
+						int j = (unsigned int) (drand48()*(i+1));
 						sbuf = realloc(sbuf, strlen(front[j])+1);
 						strcpy(sbuf,front[j]);
 						front[j] = realloc(front[j],strlen(front[i])+1);
