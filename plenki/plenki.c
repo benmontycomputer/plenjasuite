@@ -244,7 +244,24 @@ int main(int argc, char* argv[]) {
 					act=true;
 					break;
 				case 's': //shuffle:
-
+					char * sbuf = malloc(0);
+					for (int i=0; i<len; i++) {
+						int j = i + rand() / (RAND_MAX / (len - i) + 1);
+						sbuf = realloc(sbuf, strlen(front[j])+1);
+						strcpy(sbuf,front[j]);
+						front[j] = realloc(front[j],strlen(front[i])+1);
+						strcpy(front[j],front[i]);
+						front[i] = realloc(front[i],strlen(sbuf+1));
+						strcpy(front[i],sbuf);
+						sbuf = realloc(sbuf, strlen(back[j])+1);
+						strcpy(sbuf,back[j]);
+						back[j] = realloc(back[j],strlen(back[i])+1);
+						strcpy(back[j],back[i]);
+						back[i] = realloc(back[i],strlen(sbuf+1));
+						strcpy(back[i],sbuf);
+					}
+					free(sbuf);
+					act=true;
 					break;
 				case 'n': //new
 					system("/bin/stty cooked"); //immediate input off
