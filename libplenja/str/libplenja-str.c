@@ -69,8 +69,17 @@ pstring pstr_get_terminated(pstring pstr)
 pstring pstr_insert_char(pstring pstr, char c, long pos)
 {
     pstring tmp = pstr;
-    tmp.chars = insert_char_malloc(tmp.chars, tmp.len, c, pos);
-    tmp.len++;
+    if (tmp.len > 0)
+    {
+        tmp.chars = insert_char_malloc(tmp.chars, tmp.len, c, pos);
+        tmp.len++;
+    }
+    else
+    {
+        char *tmp2 = malloc(1);
+        tmp2[0] = c;
+        tmp = pstr_new_from_chars(tmp2, 1);
+    }
     return tmp;
 }
 

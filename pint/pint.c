@@ -3,6 +3,9 @@
 #define DEFAULT_FILENAME ".pinttmp"
 #define TABLEN 8
 
+#define CTRLHACCEL 8
+#define CTRLVACCEL 8
+
 #define TBARH 1
 #define BBARH 2
 
@@ -126,214 +129,265 @@ int edit(char *filename)
     while (true)
     {
         int ch = getch();
-        long oldY, oldX;
-        getyx(stdscr, oldY, oldX);
 
-        if (ch == KEY_LEFT)
+        processChar(ch, filename);
+    }
+}
+
+int processChar(int ch, char *filename)
+{
+    long oldY, oldX;
+    getyx(stdscr, oldY, oldX);
+    if (ch == KEY_LEFT)
+    {
+        if (currentDisplay.xIndex == 0)
         {
-            if (currentDisplay.xIndex == 0)
+            if (currentDisplay.currentRow == 0)
             {
-                if (currentDisplay.currentRow == 0)
-                {
-                    // at beginning
-                }
-                else
-                {
-                    if (currentDisplay.currentRow == currentDisplay.firstRow)
-                    {
-                        currentDisplay.firstRow --;
-                    }
-                    currentDisplay.currentRow --;
-                    currentDisplay.xIndex = lines.lines[currentDisplay.currentRow].len;
-                    currentDisplay.xOffset = -1;
-                    draw();
-                }
+                // at beginning
             }
             else
             {
-                if (currentDisplay.xIndex - currentDisplay.xOffset <= 1)
+                if (currentDisplay.currentRow == currentDisplay.firstRow)
                 {
-                    currentDisplay.xOffset --;
-                    if (currentDisplay.xOffset <= 0)
-                    {
-                        currentDisplay.xOffset == 0;
-                    }
+                    currentDisplay.firstRow --;
                 }
-                currentDisplay.xIndex--;
+                currentDisplay.currentRow --;
+                currentDisplay.xIndex = lines.lines[currentDisplay.currentRow].len;
+                currentDisplay.xOffset = -1;
                 draw();
-            }
-        }
-        else if (ch == KEY_RIGHT)
-        {
-            if (currentDisplay.xIndex >= lines.lines[currentDisplay.currentRow].len)
-            {
-                if (currentDisplay.currentRow + 1 >= lines.lineCount)
-                {
-                    // EOF
-                }
-                else
-                {
-                    if (oldY + 1 >= getmaxy(stdscr) - BBARH)
-                    {
-                        currentDisplay.firstRow ++;
-                    }
-                    currentDisplay.currentRow++;
-                    currentDisplay.xIndex = 0;
-                    currentDisplay.xOffset = 0;
-                    draw();
-                }
-            }
-            else
-            {
-                if (displayPos(lines.lines[currentDisplay.currentRow], currentDisplay.xIndex) - displayPos(lines.lines[currentDisplay.currentRow], currentDisplay.xOffset) + 1 >= getmaxx(stdscr) - 1)
-                {
-                    currentDisplay.xOffset ++;
-                }
-                currentDisplay.xIndex++;
-                draw();
-            }
-        }
-        else if (ch == KEY_DOWN)
-        {
-            if (currentDisplay.currentRow + 1 >= lines.lineCount)
-            {
-                
-            }
-            else
-            {
-                currentDisplay.currentRow++;
-
-                if (TBARH + currentDisplay.rowCap <= oldY + 1)
-                {
-                    currentDisplay.firstRow++;
-                }
-                else
-                {
-                    
-                }
-                currentDisplay.xOffset = 0;
-                currentDisplay.xIndex = 0;
-                draw();
-            }
-        }
-        else if (ch == KEY_UP)
-        {
-            if (currentDisplay.currentRow <= 0)
-            {
-
-            }
-            else
-            {
-                currentDisplay.currentRow--;
-                if (oldY <= TBARH)
-                {
-                    currentDisplay.firstRow--;
-                }
-                else
-                {
-
-                }
-                currentDisplay.xOffset = 0;
-                currentDisplay.xIndex = 0;
-                draw();
-            }
-        }
-        else if (isalnum(ch) || ch == ' ' || ch == '!' || ch == '@' || ch == '#' || ch == '$' || ch == '%' || ch == '^' || ch == '&' || ch == '*' || ch == '(' || ch == ')' || ch == '-' || ch == '_' || ch == '=' || ch == '+' || ch == '`' || ch == '~' || ch == '[' || ch == ']' || ch == '{' || ch == '}' || ch == '\\' || ch == '|' || ch == '\'' || ch == '"' || ch == ';' || ch == ':' || ch == ',' || ch == '.' || ch == '<' || ch == '>' || ch == '/' || ch == '?')
-        {
-            insertChar(currentDisplay.currentRow, ch, currentDisplay.xIndex);
-            currentDisplay.xIndex++;
-            draw();
-        }
-        else if (ch == 127)
-        {
-            if (currentDisplay.xIndex == 0)
-            {
-                if (currentDisplay.currentRow != 0)
-                {
-                    currentDisplay.xOffset = -1;
-                    currentDisplay.xIndex = lines.lines[currentDisplay.currentRow - 1].len;
-                    combineRows(currentDisplay.currentRow - 1, currentDisplay.currentRow);
-                    currentDisplay.currentRow --;
-                }
-            }
-            else
-            {
-                removeChar(currentDisplay.currentRow, currentDisplay.xIndex - 1);
-                currentDisplay.xIndex --;
-            }
-            draw();
-        }
-        else if (ch == 10)
-        {
-            splitRow(currentDisplay.currentRow, currentDisplay.xIndex);
-            currentDisplay.xIndex = 0;
-            currentDisplay.xOffset = 0;
-            currentDisplay.currentRow ++;
-            draw();
-        }
-        else if (ch == 24)
-        {
-            //save(filename);
-            //stdMessage(pstr_new_from_chars(" Saved ", 7));
-            int sizeY, sizeX;
-            getmaxyx(stdscr, sizeY, sizeX);
-            stdMessage(pstr_new_from_chars(SAVEMSG, strlen(SAVEMSG)));
-            refresh();
-            int ch = getch();
-            if (ch == 'y')
-            {
-                int result = save(filename);
-                if (result == 0)
-                {
-                    return 0;
-                }
-                else
-                {
-                    if (result == EACCES)
-                    {
-                        stdMessage(pstr_new_from_chars(SFAIL_EACCES, strlen(SFAIL_EACCES)));
-                    }
-                    else
-                    {
-                        stdMessage(pstr_new_from_chars(SFAIL_GENERIC, strlen(SFAIL_GENERIC)));
-                    }
-                    refresh();
-                }
-            }
-            else if (ch == 'n')
-            {
-                return 0;
-            }
-            else if (ch == 'c')
-            {
-                int y,x;
-                getyx(stdscr, y, x);
-
-                move(sizeY - BBARH - 1, 0);
-                clrtoeol();
-                move(y, x);
-                draw();
-            }
-            else
-            {
-                int y,x;
-                getyx(stdscr, y, x);
-
-                move(sizeY - BBARH - 1, 0);
-                clrtoeol();
-                move(y, x);
-                refresh();
-                
-                stdMessage(pstr_new_from_chars(SFAIL_INVALIDINPUT, strlen(SFAIL_INVALIDINPUT)));
             }
         }
         else
         {
-            /*char *t1 = malloc(10);
-            snprintf(t1, 10, "%d", ch);
-            writeLineInvertColor(pstr_new_from_chars(t1, 10), 0);
-            free(t1);*/
+            if (currentDisplay.xIndex - currentDisplay.xOffset <= 1)
+            {
+                currentDisplay.xOffset --;
+                if (currentDisplay.xOffset <= 0)
+                {
+                    currentDisplay.xOffset == 0;
+                }
+            }
+            currentDisplay.xIndex--;
+            draw();
         }
+    }
+    else if (ch == KEY_RIGHT)
+    {
+        if (currentDisplay.xIndex >= lines.lines[currentDisplay.currentRow].len)
+        {
+            if (currentDisplay.currentRow + 1 >= lines.lineCount)
+            {
+                // EOF
+            }
+            else
+            {
+                if (oldY + 1 >= getmaxy(stdscr) - BBARH)
+                {
+                    currentDisplay.firstRow ++;
+                }
+                currentDisplay.currentRow++;
+                currentDisplay.xIndex = 0;
+                currentDisplay.xOffset = 0;
+                draw();
+            }
+        }
+        else
+        {
+            if (displayPos(lines.lines[currentDisplay.currentRow], currentDisplay.xIndex) - displayPos(lines.lines[currentDisplay.currentRow], currentDisplay.xOffset) + 1 >= getmaxx(stdscr) - 1)
+            {
+                currentDisplay.xOffset ++;
+            }
+            currentDisplay.xIndex++;
+            draw();
+        }
+    }
+    else if (ch == KEY_DOWN)
+    {
+        if (currentDisplay.currentRow + 1 >= lines.lineCount)
+        {
+            currentDisplay.xOffset = -1;
+            currentDisplay.xIndex = lines.lines[currentDisplay.currentRow].len;
+            draw();
+        }
+        else
+        {
+            currentDisplay.currentRow++;
+
+            if (TBARH + currentDisplay.rowCap <= oldY + 1)
+            {
+                currentDisplay.firstRow++;
+            }
+            else
+            {
+                
+            }
+            //currentDisplay.xOffset = 0;
+            //currentDisplay.xIndex = 0;
+            currentDisplay.xOffset = -1;
+            currentDisplay.xIndex = arrayPos(lines.lines[currentDisplay.currentRow], displayPos(lines.lines[currentDisplay.currentRow - 1], currentDisplay.xIndex));
+            draw();
+        }
+    }
+    else if (ch == KEY_UP)
+    {
+        if (currentDisplay.currentRow <= 0)
+        {
+            currentDisplay.xOffset = 0;
+            currentDisplay.xIndex = 0;
+            draw();
+        }
+        else
+        {
+            currentDisplay.currentRow--;
+            if (oldY <= TBARH)
+            {
+                currentDisplay.firstRow--;
+            }
+            else
+            {
+
+            }
+            //currentDisplay.xOffset = 0;
+            //currentDisplay.xIndex = 0;
+
+            currentDisplay.xOffset = -1;
+            currentDisplay.xIndex = arrayPos(lines.lines[currentDisplay.currentRow], displayPos(lines.lines[currentDisplay.currentRow + 1], currentDisplay.xIndex));
+
+            draw();
+        }
+    }
+    else if (isalnum(ch) || ch == ' ' || ch == '!' || ch == '@' || ch == '#' || ch == '$' || ch == '%' || ch == '^' || ch == '&' || ch == '*' || ch == '(' || ch == ')' || ch == '-' || ch == '_' || ch == '=' || ch == '+' || ch == '`' || ch == '~' || ch == '[' || ch == ']' || ch == '{' || ch == '}' || ch == '\\' || ch == '|' || ch == '\'' || ch == '"' || ch == ';' || ch == ':' || ch == ',' || ch == '.' || ch == '<' || ch == '>' || ch == '/' || ch == '?')
+    {
+        insertChar(currentDisplay.currentRow, ch, currentDisplay.xIndex);
+        currentDisplay.xIndex++;
+        draw();
+    }
+    else if (ch == 127)
+    {
+        if (currentDisplay.xIndex == 0)
+        {
+            if (currentDisplay.currentRow != 0 && lines.lineCount != 1)
+            {
+                currentDisplay.xOffset = -1;
+                currentDisplay.xIndex = lines.lines[currentDisplay.currentRow - 1].len;
+                combineRows(currentDisplay.currentRow - 1, currentDisplay.currentRow);
+                currentDisplay.currentRow --;
+            }
+        }
+        else
+        {
+            removeChar(currentDisplay.currentRow, currentDisplay.xIndex - 1);
+            currentDisplay.xIndex --;
+        }
+        draw();
+    }
+    else if (ch == 10)
+    {
+        splitRow(currentDisplay.currentRow, currentDisplay.xIndex);
+        currentDisplay.xIndex = 0;
+        currentDisplay.xOffset = 0;
+        currentDisplay.currentRow ++;
+        draw();
+    }
+    else if (ch == 24)
+    {
+        //save(filename);
+        //stdMessage(pstr_new_from_chars(" Saved ", 7));
+        int sizeY, sizeX;
+        getmaxyx(stdscr, sizeY, sizeX);
+        stdMessage(pstr_new_from_chars(SAVEMSG, strlen(SAVEMSG)));
+        refresh();
+        int ch = getch();
+        if (ch == 'y')
+        {
+            int result = save(filename);
+            if (result == 0)
+            {
+                return 0;
+            }
+            else
+            {
+                if (result == EACCES)
+                {
+                    stdMessage(pstr_new_from_chars(SFAIL_EACCES, strlen(SFAIL_EACCES)));
+                }
+                else
+                {
+                    stdMessage(pstr_new_from_chars(SFAIL_GENERIC, strlen(SFAIL_GENERIC)));
+                }
+                refresh();
+            }
+        }
+        else if (ch == 'n')
+        {
+            return 0;
+        }
+        else if (ch == 'c')
+        {
+            int y,x;
+            getyx(stdscr, y, x);
+
+            move(sizeY - BBARH - 1, 0);
+            clrtoeol();
+            move(y, x);
+            draw();
+        }
+        else
+        {
+            int y,x;
+            getyx(stdscr, y, x);
+
+            move(sizeY - BBARH - 1, 0);
+            clrtoeol();
+            move(y, x);
+            refresh();
+            
+            stdMessage(pstr_new_from_chars(SFAIL_INVALIDINPUT, strlen(SFAIL_INVALIDINPUT)));
+        }
+    }
+    else if (ch == 546) // ctrl+left
+    {
+        int i = 0;
+        while (i < CTRLHACCEL)
+        {
+            processChar(KEY_LEFT, filename);
+            i++;
+        }
+    }
+    else if (ch == 561) // ctrl+right
+    {
+        int i = 0;
+        while (i < CTRLHACCEL)
+        {
+            processChar(KEY_RIGHT, filename);
+            i++;
+        }
+    }
+    else if (ch == 526) // ctrl+down
+    {
+        int i = 0;
+        while (i < CTRLVACCEL)
+        {
+            processChar(KEY_DOWN, filename);
+            i++;
+        }
+    }
+    else if (ch == 567) // ctrl+up
+    {
+        int i = 0;
+        while (i < CTRLVACCEL)
+        {
+            processChar(KEY_UP, filename);
+            i++;
+        }
+    }
+    else
+    {
+        /*char *t1 = malloc(10);
+        snprintf(t1, 10, "%d", ch);
+        writeLineInvertColor(pstr_new_from_chars(t1, 10), 0);
+        free(t1);*/
     }
 }
 
@@ -406,20 +460,20 @@ int expandRows()
 
 int removeRow(long index)
 {
-    pstring tmp[lines.lineCount];
+    pstring tmp[lines.lineCount - 1];
     
     long i = 0;
     
     while (i < index)
     {
-        tmp[i].chars = lines.lines[i].chars;
+        tmp[i] = lines.lines[i];
         //tmp[i].displaylength = rows[i].displaylength;
         i++;
     }
     i++;
     while (i < lines.lineCount)
     {
-        tmp[i - 1].chars = lines.lines[i].chars;
+        tmp[i - 1] = lines.lines[i];
         //tmp[i - 1].displaylength = rows[i].displaylength;
         i++;
     }
@@ -432,7 +486,7 @@ int removeRow(long index)
     
     while (i < lines.lineCount - 1)
     {
-        lines.lines[i].chars = tmp[i].chars;
+        lines.lines[i] = tmp[i];
         //rows[i].displaylength = tmp[i].displaylength;
         i++;
     }
@@ -583,7 +637,7 @@ long displayPos(pstring row, long arrayIndex)
         if (row.chars[i] == '\t')
         {
             //pos += TABLEN;
-            pos += 8 - pos % 8;
+            pos += TABLEN - pos % TABLEN;
         }
         else
         {
@@ -592,4 +646,40 @@ long displayPos(pstring row, long arrayIndex)
         i++;
     }
     return pos;
+}
+
+int arrayPos(pstring row, long index)
+{
+    long i = 0;//rows[row].reallength - 1;
+    long newlen = 0;
+    while (i < row.len)
+    {
+        if (index == 0)
+        {
+            i = 0;
+            break;
+        }
+        if (row.chars[i] == '\t')
+        {
+            //newlen += 8 - newlen % 8;//(i + 8) / 8 * 8 - i;
+            newlen += TABLEN - newlen % TABLEN;
+        }
+        else
+        {
+            //newlen += utf8len(&rows[row].chars.chars[i]);
+            newlen++;
+        }
+
+        i++;
+        if (newlen >= index)
+        {
+            if (newlen > index)
+            {
+                //fprintf(stderr, "1210 error");
+            }
+            break;
+        }
+    }
+
+    return(i);
 }
