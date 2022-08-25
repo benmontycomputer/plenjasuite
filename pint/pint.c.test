@@ -17,6 +17,8 @@ abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqr
 #define TABSIZE 8
 #define DEFAULT_FILENAME ".pinttmp"
 
+	D	F		m
+
 typedef struct editorRow
 {
     pstring chars;

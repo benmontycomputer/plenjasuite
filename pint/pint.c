@@ -580,9 +580,10 @@ long displayPos(pstring row, long arrayIndex)
         {
             return pos;
         }
-        if (row.chars[pos] == '\t')
+        if (row.chars[i] == '\t')
         {
-            pos += TABLEN;
+            //pos += TABLEN;
+            pos += 8 - pos % 8;
         }
         else
         {
