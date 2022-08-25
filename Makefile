@@ -17,3 +17,6 @@ install_terminal:
 
 install_pint:
 	make -C pint install
+
+install_pint2:
+	make -C pint2 install
