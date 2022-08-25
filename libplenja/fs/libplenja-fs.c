@@ -61,7 +61,7 @@ pstring* openFile(char *filename)
         //numberOfRows++;
     }
     fclose(file);
-    free(currentline);
+    //free(currentline);
 
     return out;
 }

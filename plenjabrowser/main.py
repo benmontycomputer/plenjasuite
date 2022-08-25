@@ -69,7 +69,6 @@ class MainWindow(Gtk.Window):
                                               Gtk.TargetFlags.OTHER_APP, 0)],
         #                  ],
                          Gdk.DragAction.MOVE)
-
         self.new_tab(self)
 
         self.show_all()
@@ -79,8 +78,8 @@ class MainWindow(Gtk.Window):
         headerbar.makeheaderbar(self)
 
         self.set_titlebar(self.headerbar)
-    
-    drag_page_number = 0
+
+        self.notebook1.connect("switch-page", self.urlupdate, 1)
     def go(self, widget):
         url = self.urlbar.get_text()
         if ((url.startswith("http://") == False) and (url.startswith("https://") == False) and (url.startswith("plenja://") == False) and (url.startswith("file://") == False)):
@@ -99,13 +98,27 @@ class MainWindow(Gtk.Window):
             if validators.url(url):
                 currentpage.load_uri(url)
             else:
-                currentpage.load_uri("https://www.google.com/search?q=" + url[7:])
+                currentpage.load_uri("https://www.google.com/search?q=" + self.urlbar.get_text())
 
         currentpage.grab_focus()
         
-    def urlupdate(self, widget, arg1):
-        if self.notebook1.get_nth_page(self.notebook1.get_current_page()) == widget:
-            self.urlbar.set_text(widget.get_uri())
+    def urlupdate(self, widget, arg1=0, arg2=0, arg3=0):
+        currentpage = self.notebook1.get_nth_page(self.notebook1.get_current_page())
+        #if currentpage == widget:
+        #    self.urlbar.set_text(widget.get_uri())
+        #    if currentpage.get_tls_info()[0]:
+        #        self.urlbar.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "channel-secure-symbolic")
+        #    else:
+        #        self.urlbar.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "channel-insecure-symbolic")
+        if arg3 == 1:
+            currentpage = arg1
+            self.progress_update(widget)
+        self.urlbar.set_text(currentpage.get_uri())
+        if currentpage.get_tls_info()[0]:
+            self.urlbar.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "channel-secure-symbolic")
+        else:
+            self.urlbar.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "channel-insecure-symbolic")        
+
     def back(self, widget):
         currentpage = self.notebook1.get_nth_page(self.notebook1.get_current_page())
         currentpage.go_back()
@@ -188,10 +201,10 @@ class MainWindow(Gtk.Window):
         self.notebook1.set_tab_label(frame, tabbox)
         
         return
-    def new_tab(self, widget, page=-1):
+    def new_tab(self, widget, page=-1, uri="https://www.google.com"):
         print("new tab")
         newtab = WebKit2.WebView()
-        newtab.load_uri("https://google.com")
+        newtab.load_uri(uri)
         newtabwrap = TabWrapper()
         newtabwrap.tab1 = newtab
         newtabwrap.notebook = self.notebook1
@@ -232,16 +245,34 @@ class MainWindow(Gtk.Window):
         settings = newtab.get_settings()
         
         newtab.set_settings(settings)
+        newtab.connect("notify::estimated-load-progress", self.progress_update)
         
         #if page != -1:
         #    self.notebook1.set_current_page(page)
         self.notebook1.set_current_page(newpagenumber)
+    def progress_update(self, widget, arg1=0):
+        currentpage = self.notebook1.get_nth_page(self.notebook1.get_current_page())
+        #if widget == currentpage:
+        #    progress = widget.get_estimated_load_progress()
+        #    if progress == 1:
+        #        self.urlbar.set_progress_fraction(0)
+        #    else:
+        #        self.urlbar.set_progress_fraction(progress)
+        progress = currentpage.get_estimated_load_progress()
+        if progress == 1:
+            self.urlbar.set_progress_fraction(0)
+        else:
+            self.urlbar.set_progress_fraction(progress)
     def close_tab(self, discard1, tab):
         if self.notebook1.get_n_pages() == 1:
             self.close()
-        self.notebook1.prev_page()
+        if self.notebook1.get_nth_page(self.notebook1.get_current_page()) == tab:
+            self.notebook1.prev_page()
         self.notebook1.remove(tab)
-
+    def tlspressed(self, widget, icon_pos, event):
+        if icon_pos == Gtk.EntryIconPosition.PRIMARY:
+            print("Haven't implemented tls status button.")
+        
 win = MainWindow()
 win.connect("destroy", Gtk.main_quit)
 win.show_all()

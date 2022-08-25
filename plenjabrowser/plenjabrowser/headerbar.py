@@ -25,6 +25,7 @@ def makeheaderbar(self):
     self.optionsmenu1 = Gtk.Menu()
 
     menu_item = Gtk.MenuItem(label="App Store")
+    menu_item.connect("activate", self.new_tab, -1, str(self.browsersettings.get_property("appstorepath")))
     self.optionsmenu1.append(menu_item)
     menu_item.show()
 
@@ -85,6 +86,9 @@ def makeheaderbar(self):
     self.urlbar.set_can_focus(True)
 
     self.urlbar.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "system-search-symbolic")
+    self.urlbar.set_icon_activatable(Gtk.EntryIconPosition.PRIMARY, True)
+    self.urlbar.set_icon_sensitive(Gtk.EntryIconPosition.PRIMARY, True)
+    self.urlbar.connect("icon-release", self.tlspressed)
 
     self.urlbar.connect("activate", self.go)
 def button_press(self, widget, event):

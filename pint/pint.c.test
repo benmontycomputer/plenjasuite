@@ -12,15 +12,15 @@
 #include <wchar.h>
 #include <curses.h>
 #include<wctype.h>
-
+abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
 #define TMPREFIX " Pint Editor - "
 #define TABSIZE 8
 #define DEFAULT_FILENAME ".pinttmp"
 
 typedef struct editorRow
 {
-	pstring chars;
-	long displaylength;
+    pstring chars;
+    long displaylength;
 } editorRow;
 
 static struct editorRow *rows;
@@ -34,7 +34,7 @@ static long verticalOffset = 0;
 static char done = 0;
 static void sigHandler(int signum)
 {
-	done = 1;
+    done = 1;
 }
 
 static char *filename;
@@ -44,112 +44,112 @@ static char *filename;
 
 int main(int argc, char **argv) {
     //setlocale(LC_ALL, "");
-	//initscr();
+    //initscr();
 
-	//char *filename;
+    //char *filename;
 
-	if (argc == 2) {
-		if (strcmp(argv[1], "--help") == 0)
-		{
-			printf("Usage:\n");
-			printf(argv[0]);
-			printf(" [FILE]\n");
-			return 0;
-		}
-		if (strcmp(argv[1], "--version") == 0)
-		{
-			printf("pint v0.0.1-alpha.2\n");
-			return 0;
-		}
+    if (argc == 2) {
+        if (strcmp(argv[1], "--help") == 0)
+        {
+            printf("Usage:\n");
+            printf(argv[0]);
+            printf(" [FILE]\n");
+            return 0;
+        }
+        if (strcmp(argv[1], "--version") == 0)
+        {
+            printf("pint v0.0.1-alpha.2\n");
+            return 0;
+        }
 
-		filename = malloc(strlen(argv[1]));
-		strcpy(filename, argv[1]);
-	}
-	else
-	{
-		filename = malloc(sizeof(DEFAULT_FILENAME));
-		strcpy(filename, DEFAULT_FILENAME);
-	}
-	
+        filename = malloc(strlen(argv[1]));
+        strcpy(filename, argv[1]);
+    }
+    else
+    {
+        filename = malloc(sizeof(DEFAULT_FILENAME));
+        strcpy(filename, DEFAULT_FILENAME);
+    }
+    
     setlocale(LC_ALL, "en_US.UTF-8");
-	initscr();
+    initscr();
 
-	//writespecificline(10, "1 argument passed");
-	//char filename = malloc(sizeof(argv[1]));
-	//strcpy(&argv[1], &filename);
-	//printf("%s", &argv[1]);
-	int returnval = edit(filename);
-	endwin();
-	return returnval;
-	
+    //writespecificline(10, "1 argument passed");
+    //char filename = malloc(sizeof(argv[1]));
+    //strcpy(&argv[1], &filename);
+    //printf("%s", &argv[1]);
+    int returnval = edit(filename);
+    endwin();
+    return returnval;
+    
 
-	/*initscr();
+    /*initscr();
 
-	writespecificline(0, "Welcome to the Pint text editor.");
+    writespecificline(0, "Welcome to the Pint text editor.");
 
-	int sizeX = 0;
-	int sizeY = 0;
+    int sizeX = 0;
+    int sizeY = 0;
 
-	char sizechar[16];
+    char sizechar[16];
 
-	getsize(&sizeX, &sizeY);
+    getsize(&sizeX, &sizeY);
 
-	sprintf(sizechar, "%d %s %d", sizeX, "x", sizeY);
+    sprintf(sizechar, "%d %s %d", sizeX, "x", sizeY);
 
-	writespecificline(2, "terminal size:");
-	writespecificline(3, sizechar);
-	writespecificline(5, "press enter to continue...");
+    writespecificline(2, "terminal size:");
+    writespecificline(3, sizechar);
+    writespecificline(5, "press enter to continue...");
 
-	refresh();
+    refresh();
 
-	getch();*/
+    getch();*/
 
-	endwin();
+    endwin();
 }
 
 int edit(char filename1[]) {
-	if (start_color() != OK)
-	{
-		printf("Couldn't start color.");
-		return 2;
-	}
+    if (start_color() != OK)
+    {
+        printf("Couldn't start color.");
+        return 2;
+    }
 
-	filename = malloc(strlen(filename1));
-	strcpy(filename, filename1);
+    filename = malloc(strlen(filename1));
+    strcpy(filename, filename1);
 
-	clear();
-	noecho();
-	cbreak();
+    clear();
+    noecho();
+    cbreak();
 
-	int sizeX = 0;
-	int sizeY = 0;
+    int sizeX = 0;
+    int sizeY = 0;
 
-	//https://stackoverflow.com/questions/7978315/ctrl-c-eaten-by-getchar
-	//struct sigaction sa;
-	//memset(&sa, 0, sizeof(struct sigaction));
-	//sa.sa_handler = sigHandler;
-	//sa.sa_flags = 0;// not SA_RESTART!;
+    //https://stackoverflow.com/questions/7978315/ctrl-c-eaten-by-getchar
+    //struct sigaction sa;
+    //memset(&sa, 0, sizeof(struct sigaction));
+    //sa.sa_handler = sigHandler;
+    //sa.sa_flags = 0;// not SA_RESTART!;
 
-	//sigaction(SIGINT, &sa, NULL);
-	//sigaction(SIGTERM, &sa, NULL);
+    //sigaction(SIGINT, &sa, NULL);
+    //sigaction(SIGTERM, &sa, NULL);
 
-	getsize(&sizeX, &sizeY);
+    getsize(&sizeX, &sizeY);
 
-	//printf("%d", sizeY);
+    //printf("%d", sizeY);
 
-	FILE * file = fopen(filename1, "r");
-	if (file == NULL)
-	{
-		/*file = fopen(filename1, "w+");
-		if (file == NULL)
-		{
-			printf("Unable to open or create the file %s\n", filename1);
-			return 1;
-		}*/
-		//printf("no file...");
-		//return 1;
-	}
-	else
+    FILE * file = fopen(filename1, "r");
+    if (file == NULL)
+    {
+        /*file = fopen(filename1, "w+");
+        if (file == NULL)
+        {
+            printf("Unable to open or create the file %s\n", filename1);
+            return 1;
+        }*/
+        //printf("no file...");
+        //return 1;
+    }
+    else
     {
         fclose(file);
     }
@@ -331,10 +331,10 @@ int edit(char filename1[]) {
         //getch();
         //printf("%d ", ch);
     }
-	/*while (true)
-	{
-		printf("%d ", getchar());
-	}*/
+    /*while (true)
+    {
+        printf("%d ", getchar());
+    }*/
     
     //free(rows);
 }
@@ -1372,3 +1372,4 @@ void writespecificcharswithcolor(long line, long charindex, char *chars, int tex
     attroff(COLOR_PAIR(1));
     move(y, x);
 }
+
