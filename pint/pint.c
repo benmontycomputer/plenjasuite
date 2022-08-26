@@ -13,9 +13,11 @@
 #define BBARI "^X          ^W       "
 
 #define SAVEMSG "Do you want to save? (y)es/(n)o/(c)ancel\0"
+#define FNPROMPT "Filename: "
 #define SFAIL_EACCES "Failed to save: permission denied.\0"
 #define SFAIL_GENERIC "Failed to save.\0"
 #define SFAIL_INVALIDINPUT "Invalid input. Not closing.\0"
+#define WOSUCCES "Saved."
 
 typedef struct fileLines
 {
@@ -64,6 +66,8 @@ int main(int argc, char **argv) {
 	
     setlocale(LC_ALL, "en_US.UTF-8");
 	initscr();
+
+    set_tabsize(TABLEN);
 
     int returnVal = edit(filename);
 
@@ -130,7 +134,10 @@ int edit(char *filename)
     {
         int ch = getch();
 
-        processChar(ch, filename);
+        if (processChar(ch, filename) == 5)
+        {
+            return 0;
+        }
     }
 }
 
@@ -257,7 +264,7 @@ int processChar(int ch, char *filename)
             draw();
         }
     }
-    else if (isalnum(ch) || ch == ' ' || ch == '!' || ch == '@' || ch == '#' || ch == '$' || ch == '%' || ch == '^' || ch == '&' || ch == '*' || ch == '(' || ch == ')' || ch == '-' || ch == '_' || ch == '=' || ch == '+' || ch == '`' || ch == '~' || ch == '[' || ch == ']' || ch == '{' || ch == '}' || ch == '\\' || ch == '|' || ch == '\'' || ch == '"' || ch == ';' || ch == ':' || ch == ',' || ch == '.' || ch == '<' || ch == '>' || ch == '/' || ch == '?')
+    else if (isalnum(ch) || ch == ' ' || ch == '!' || ch == '@' || ch == '#' || ch == '$' || ch == '%' || ch == '^' || ch == '&' || ch == '*' || ch == '(' || ch == ')' || ch == '-' || ch == '_' || ch == '=' || ch == '+' || ch == '`' || ch == '~' || ch == '[' || ch == ']' || ch == '{' || ch == '}' || ch == '\\' || ch == '|' || ch == '\'' || ch == '"' || ch == ';' || ch == ':' || ch == ',' || ch == '.' || ch == '<' || ch == '>' || ch == '/' || ch == '?' || ch == '\t')
     {
         insertChar(currentDisplay.currentRow, ch, currentDisplay.xIndex);
         currentDisplay.xIndex++;
@@ -290,6 +297,10 @@ int processChar(int ch, char *filename)
         currentDisplay.currentRow ++;
         draw();
     }
+    else if (ch == 23)
+    {
+        savePrompt(filename);
+    }
     else if (ch == 24)
     {
         //save(filename);
@@ -301,27 +312,11 @@ int processChar(int ch, char *filename)
         int ch = getch();
         if (ch == 'y')
         {
-            int result = save(filename);
-            if (result == 0)
-            {
-                return 0;
-            }
-            else
-            {
-                if (result == EACCES)
-                {
-                    stdMessage(pstr_new_from_chars(SFAIL_EACCES, strlen(SFAIL_EACCES)));
-                }
-                else
-                {
-                    stdMessage(pstr_new_from_chars(SFAIL_GENERIC, strlen(SFAIL_GENERIC)));
-                }
-                refresh();
-            }
+            savePrompt(filename);
         }
         else if (ch == 'n')
         {
-            return 0;
+            return 5;
         }
         else if (ch == 'c')
         {
@@ -382,6 +377,10 @@ int processChar(int ch, char *filename)
             i++;
         }
     }
+    else if (ch == 6) // ctrl+f
+    {
+        // Insert search here
+    }
     else
     {
         /*char *t1 = malloc(10);
@@ -389,6 +388,105 @@ int processChar(int ch, char *filename)
         writeLineInvertColor(pstr_new_from_chars(t1, 10), 0);
         free(t1);*/
     }
+}
+
+int savePrompt(char *filename)
+{
+    int oldY, oldX;
+    getyx(stdscr, oldY, oldX);
+    //stdMessage(pstr_new_from_chars(FNPROMPT, strlen(FNPROMPT)));
+
+    char fname[255];
+
+    bool saveBool = false;
+
+    if (filename[0] != '/')
+    {
+        char *cwd = getcwd(NULL, 0);
+        strncpy(fname, cwd, strlen(cwd) + 1);
+        strncat(fname, "/", 2);
+        strncat(fname, filename, strlen(filename) + 1);
+        free(cwd);
+    }
+    else
+    {
+        strncpy(fname, filename, strlen(filename));
+    }
+
+    int ch2;
+    int i = strlen(fname);
+    stdMessage(pstr_combine(pstr_new_from_chars(FNPROMPT, strlen(FNPROMPT)), pstr_new_from_chars(fname, i)));
+
+    move(getmaxy(stdscr) - BBARH - 1, (getmaxx(stdscr) - (i + strlen(FNPROMPT) + 2)) / 2 + i + 1 + strlen(FNPROMPT));
+
+    while (saveBool == false)
+    {
+        int ch2 = getch();
+        
+        if (ch2 == 24)
+        {
+            break;
+        }
+        else if (ch2 == 10)
+        {
+            saveBool = true;
+            break;
+        }
+        else if (isalnum(ch2) || ch2 == ' ' || ch2 == '!' || ch2 == '@' || ch2 == '#' || ch2 == '$' || ch2 == '%' || ch2 == '^' || ch2 == '&' || ch2 == '*' || ch2 == '(' || ch2 == ')' || ch2 == '-' || ch2 == '_' || ch2 == '=' || ch2 == '+' || ch2 == '`' || ch2 == '~' || ch2 == '[' || ch2 == ']' || ch2 == '{' || ch2 == '}' || ch2 == '\\' || ch2 == '|' || ch2 == '\'' || ch2 == '"' || ch2 == ';' || ch2 == ':' || ch2 == ',' || ch2 == '.' || ch2 == '<' || ch2 == '>' || ch2 == '/' || ch2 == '?')
+        {
+            fname[i] = ch2;
+        }
+        else if (ch2 == 127)
+        {
+            fname[i - 1] = NULL;
+            i -= 2;
+        }
+        i ++;
+        move(getmaxy(stdscr) - BBARH - 1, (getmaxx(stdscr) - (i + strlen(FNPROMPT) + 2)) / 2 + i + 1 + strlen(FNPROMPT));
+        stdMessage(pstr_combine(pstr_new_from_chars(FNPROMPT, strlen(FNPROMPT)), pstr_new_from_chars(fname, i)));
+    }
+
+    if (saveBool)
+    {
+        /*char *fname2 = malloc(i + 1);
+
+        if (fname[0] == '/')
+        {
+            strncpy(fname2, fname, i);
+        }
+        else
+        {
+            fname2 = realloc(fname2, i + 1 + strlen(dirname(filename)));
+            strncpy(fname2, dirname(filename), strlen(filename));
+            strncat(fname2, fname, i);
+        }
+
+        int result = save(fname2);*/
+        int result = save(fname);
+        //free(fname2);
+        if (result == 0)
+        {
+            stdMessage(pstr_new_from_chars(WOSUCCES, strlen(WOSUCCES)));
+        }
+        else
+        {
+            if (result == EACCES)
+            {
+                stdMessage(pstr_new_from_chars(SFAIL_EACCES, strlen(SFAIL_EACCES)));
+            }
+            else
+            {
+                stdMessage(pstr_new_from_chars(SFAIL_GENERIC, strlen(SFAIL_GENERIC)));
+            }
+            refresh();
+        }
+    }
+    else
+    {
+        //stdMessage()
+    }
+
+    move(oldY, oldX);
 }
 
 int stdMessage(pstring msg)
@@ -406,9 +504,9 @@ int stdMessage(pstring msg)
     if (msg.len + 1 < sizeX)
     {
         pstring output = pstr_new_from_chars("[", 2);
-        output = pstr_combine(output, msg);
-        output = pstr_combine(output, pstr_new_from_chars("]", 2));
-        writeCharsInvertColor(output, sizeY - BBARH - 1, buffersize - 1);
+        pstring output2 = pstr_combine(output, msg);
+        pstring output3 = pstr_combine(output2, pstr_new_from_chars("]", 2));
+        writeCharsInvertColor(output3, sizeY - BBARH - 1, buffersize - 1);
     }
     else
     {
@@ -425,7 +523,11 @@ int save(char *filename)
 
 int combineRows(long keep, long remove)
 {
-    lines.lines[keep] = pstr_combine(lines.lines[keep], lines.lines[remove]);
+    //lines.lines[keep] = pstr_combine(lines.lines[keep], lines.lines[remove]);
+    pstring tmp = pstr_combine(lines.lines[keep], lines.lines[remove]);
+    free(lines.lines[keep].chars);
+    lines.lines[keep].chars = tmp.chars;
+    lines.lines[keep].len = tmp.len;
     
     removeRow(remove);
 }
@@ -433,7 +535,11 @@ int combineRows(long keep, long remove)
 int splitRow(long row, long index)
 {
     insertRow(pstr_start_at(lines.lines[row], index), row + 1);
-    lines.lines[row] = pstr_first_n(lines.lines[row], index);
+    //lines.lines[row] = pstr_first_n(lines.lines[row], index);
+    pstring tmp = pstr_first_n(lines.lines[row], index);
+    free(lines.lines[row].chars);
+    lines.lines[row].chars = tmp.chars;
+    lines.lines[row].len = tmp.len;
 }
 
 int insertRow(pstring contents, long index)
@@ -444,7 +550,8 @@ int insertRow(pstring contents, long index)
     
     while (i >= index + 1)
     {
-        lines.lines[i] = lines.lines[i - 1];
+        lines.lines[i].chars = lines.lines[i - 1].chars;
+        lines.lines[i].len = lines.lines[i - 1].len;
 
         i--;
     }
@@ -466,14 +573,16 @@ int removeRow(long index)
     
     while (i < index)
     {
-        tmp[i] = lines.lines[i];
+        tmp[i].chars = lines.lines[i].chars;
+        tmp[i].len = lines.lines[i].len;
         //tmp[i].displaylength = rows[i].displaylength;
         i++;
     }
     i++;
     while (i < lines.lineCount)
     {
-        tmp[i - 1] = lines.lines[i];
+        tmp[i - 1].chars = lines.lines[i].chars;
+        tmp[i - 1].len = lines.lines[i].len;
         //tmp[i - 1].displaylength = rows[i].displaylength;
         i++;
     }
@@ -486,7 +595,8 @@ int removeRow(long index)
     
     while (i < lines.lineCount - 1)
     {
-        lines.lines[i] = tmp[i];
+        lines.lines[i].chars = tmp[i].chars;
+        lines.lines[i].len = tmp[i].len;
         //rows[i].displaylength = tmp[i].displaylength;
         i++;
     }
@@ -498,12 +608,20 @@ int removeRow(long index)
 
 int insertChar(long row, char insertChar, long pos)
 {
-    lines.lines[row] = pstr_insert_char(lines.lines[row], insertChar, pos);
+    //lines.lines[row] = pstr_insert_char(lines.lines[row], insertChar, pos);
+    pstring tmp = pstr_insert_char(lines.lines[row], insertChar, pos);
+    free(lines.lines[row].chars);
+    lines.lines[row].chars = tmp.chars;
+    lines.lines[row].len = tmp.len;
 }
 
 int removeChar(long row, long pos)
 {
-    lines.lines[row] = pstr_remove_char(lines.lines[row], pos);
+    //lines.lines[row] = pstr_remove_char(lines.lines[row], pos);
+    pstring tmp = pstr_remove_char(lines.lines[row], pos);
+    free(lines.lines[row].chars);
+    lines.lines[row].chars = tmp.chars;
+    lines.lines[row].len = tmp.len;
 }
 
 int draw()

@@ -8,6 +8,8 @@
 #include "libplenja.h"
 #include<stdint.h>
 #include<locale.h>
+#include<libgen.h>
+#include<unistd.h>
 
 long displayPos(pstring row, long arrayIndex);
 int insertChar(long row, char insertChar, long pos);
