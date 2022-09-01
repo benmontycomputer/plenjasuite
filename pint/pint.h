@@ -13,3 +13,5 @@
 
 long displayPos(pstring row, long arrayIndex);
 int insertChar(long row, char insertChar, long pos);
+int edit();
+int *savePrompt();

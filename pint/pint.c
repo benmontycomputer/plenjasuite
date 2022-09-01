@@ -19,6 +19,9 @@
 #define SFAIL_INVALIDINPUT "Invalid input. Not closing.\0"
 #define WOSUCCES "Saved."
 
+#define INVTCOLOR COLOR_BLACK
+#define INVBGCOLOR COLOR_WHITE
+
 typedef struct fileLines
 {
     pstring *lines;
@@ -38,9 +41,9 @@ typedef struct display
 static struct fileLines lines;
 static struct display currentDisplay;
 
-int main(int argc, char **argv) {
-    char *filename;
+static char *filename;
 
+int main(int argc, char **argv) {
     if (argc == 2) {
 		if (strcmp(argv[1], "--help") == 0)
 		{
@@ -69,13 +72,13 @@ int main(int argc, char **argv) {
 
     set_tabsize(TABLEN);
 
-    int returnVal = edit(filename);
+    int returnVal = edit();
 
     endwin();
     return returnVal;
 }
 
-int edit(char *filename)
+int edit()
 {
     if (start_color() != OK)
 	{
@@ -299,7 +302,7 @@ int processChar(int ch, char *filename)
     }
     else if (ch == 23)
     {
-        savePrompt(filename);
+        savePrompt();
     }
     else if (ch == 24)
     {
@@ -312,7 +315,7 @@ int processChar(int ch, char *filename)
         int ch = getch();
         if (ch == 'y')
         {
-            savePrompt(filename);
+            savePrompt();
         }
         else if (ch == 'n')
         {
@@ -390,7 +393,7 @@ int processChar(int ch, char *filename)
     }
 }
 
-int savePrompt(char *filename)
+int *savePrompt()
 {
     int oldY, oldX;
     getyx(stdscr, oldY, oldX);
@@ -430,6 +433,7 @@ int savePrompt(char *filename)
         else if (ch2 == 10)
         {
             saveBool = true;
+            fname[i] = '\0';
             break;
         }
         else if (isalnum(ch2) || ch2 == ' ' || ch2 == '!' || ch2 == '@' || ch2 == '#' || ch2 == '$' || ch2 == '%' || ch2 == '^' || ch2 == '&' || ch2 == '*' || ch2 == '(' || ch2 == ')' || ch2 == '-' || ch2 == '_' || ch2 == '=' || ch2 == '+' || ch2 == '`' || ch2 == '~' || ch2 == '[' || ch2 == ']' || ch2 == '{' || ch2 == '}' || ch2 == '\\' || ch2 == '|' || ch2 == '\'' || ch2 == '"' || ch2 == ';' || ch2 == ':' || ch2 == ',' || ch2 == '.' || ch2 == '<' || ch2 == '>' || ch2 == '/' || ch2 == '?')
@@ -445,6 +449,8 @@ int savePrompt(char *filename)
         move(getmaxy(stdscr) - BBARH - 1, (getmaxx(stdscr) - (i + strlen(FNPROMPT) + 2)) / 2 + i + 1 + strlen(FNPROMPT));
         stdMessage(pstr_combine(pstr_new_from_chars(FNPROMPT, strlen(FNPROMPT)), pstr_new_from_chars(fname, i)));
     }
+
+    move(oldY, oldX);
 
     if (saveBool)
     {
@@ -463,6 +469,7 @@ int savePrompt(char *filename)
 
         int result = save(fname2);*/
         int result = save(fname);
+        //free(filename);
         //free(fname2);
         if (result == 0)
         {
@@ -480,13 +487,17 @@ int savePrompt(char *filename)
             }
             refresh();
         }
+
+        free(filename);
+        filename = malloc(strlen(fname) + 1);
+        strncpy(filename, fname, strlen(fname));
+        filename[strlen(fname)] = '\0';
+        //filename = tmp;
     }
     else
     {
-        //stdMessage()
+        
     }
-
-    move(oldY, oldX);
 }
 
 int stdMessage(pstring msg)
@@ -504,9 +515,9 @@ int stdMessage(pstring msg)
     if (msg.len + 1 < sizeX)
     {
         pstring output = pstr_new_from_chars("[", 2);
-        pstring output2 = pstr_combine(output, msg);
-        pstring output3 = pstr_combine(output2, pstr_new_from_chars("]", 2));
-        writeCharsInvertColor(output3, sizeY - BBARH - 1, buffersize - 1);
+        output = pstr_combine(output, msg);
+        output = pstr_combine(output, pstr_new_from_chars("]", 2));
+        writeCharsInvertColor(output, sizeY - BBARH - 1, buffersize - 1);
     }
     else
     {
@@ -694,7 +705,7 @@ int writeLineInvertColor(pstring line, int y)
     bool invertColor = true;
     if (invertColor)
     {
-        init_pair(1, COLOR_BLACK, COLOR_WHITE);
+        init_pair(1, INVTCOLOR, INVBGCOLOR);
         attrset(COLOR_PAIR(1));
     }
     int oldY = getcury(stdscr);
@@ -716,7 +727,7 @@ int writeCharsInvertColor(pstring chars, int line, int charindex)
 {
     int y,x;
     getyx(stdscr, y, x);
-    init_pair(1, COLOR_BLACK, COLOR_WHITE);
+    init_pair(1, INVTCOLOR, INVBGCOLOR);
     attrset(COLOR_PAIR(1));
     move(line, charindex);
     addnstr(pstr_get_terminated(chars).chars, getmaxx(stdscr));
